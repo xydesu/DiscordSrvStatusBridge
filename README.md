@@ -1,29 +1,52 @@
 # DiscordSrvStatusBridge
 
-一個為 Minecraft 伺服器設計的 DiscordSrv Addon 插件，能在指定的 Discord 頻道中維護與即時更新一個極其精美的「伺服器狀態」嵌入式訊息（Embed）。
+一個用於在 Discord 頻道顯示 Minecraft 伺服器運作狀態的 DiscordSrv 附加組件。
 
-## 💡 功能特色
+## 核心功能
 
-- **動態效能監控**：即時展示伺服器 TPS（包含 1 分鐘、5 分鐘、15 分鐘平均值）與系統記憶體（RAM）使用率。
-- **維護模式整合**：以反射技術對接知名維護插件 [Maintenance (by kennytv)](https://github.com/kennytv/Maintenance/)，當開啟維護模式時，Discord 狀態訊息會同步變更為維護標題與顏色。
-- **精美玩家頭像清單**：支援透過外部頭像 API（如 Crafatar 或 Minotar）渲染線上玩家列表，玩家名稱在 Discord Embed 中會顯示為可點選的頭像超連結。
-- **關機狀態自動編輯**：當伺服器關機（`onDisable`）時，插件會利用同步阻塞機制，100% 保證將 Discord 訊息狀態更新為「🔴 伺服器已關閉」，避免顯示不實狀態。
-- **極致相容性**：特別採用反射技術來處理 JDA API，**同時完美相容 DiscordSrv 內建的 JDA 4 與 JDA 5**，無懼 DiscordSrv 版本升級帶來的 `NoSuchMethodError` 崩潰問題。
-- **高度可配置**：所有的狀態標題、Embed 顏色、維護字樣、甚至整個訊息描述版面（透過 description-template），都可以在設定檔中自由客製化。
-
----
-
-## 🛠️ 安裝與設定
-
-1. 將編譯好的 `discordsrv-status-bridge-1.0.0-SNAPSHOT.jar` 放入伺服器的 `plugins` 目錄中。
-2. 啟動伺服器以生成預設的 `config.yml` 設定檔。
-3. 開啟 `plugins/DiscordSrvStatusBridge/config.yml`，在 `channel-id` 欄位中填入您想要用來顯示狀態的 Discord 頻道 ID。
-4. 使用 `/minecraft:reload` 或重啟伺服器套用設定。
-5. 插件會在該頻道發送一則狀態訊息，並自動將訊息 ID 記錄至 `config.yml` 的 `message-id` 中（請勿手動修改此 ID）。
+- **系統狀態監控**：取得伺服器 TPS（1分鐘、5分鐘、15分鐘平均值）以及系統記憶體（RAM）使用狀況。
+- **維護狀態整合**：支援與 Maintenance 插件對接，當伺服器開啟維護模式時，狀態訊息會切換為對應的標題與顏色。
+- **玩家清單展示**：使用外部頭像 API（如 Crafatar、Minotar）生成線上玩家名單，在 Discord Embed 中顯示為可點選的頭像超連結。
+- **關閉狀態編輯**：在伺服器停用（onDisable）時發送同步請求，將訊息更新為已關閉狀態，防止顯示錯誤的運作資訊。
+- **API 相容性設計**：使用反射調用 JDA API，相容不同版本 DiscordSrv 所內建的 JDA 4 或 JDA 5，減少因相依套件升級導致 plugin 崩潰的機率。
+- **自訂描述模板**：支援在設定檔中自訂描述格式，並提供多種預留位置進行動態替換。
 
 ---
 
-## 📄 設定檔範例 (`config.yml`)
+## 安裝與設定步驟
+
+1. 將編譯完成的 `discordsrv-status-bridge-1.0.0-SNAPSHOT.jar` 放入伺服器的 `plugins` 資料夾中。
+2. 啟動伺服器以生成預設設定檔。
+3. 編輯 `plugins/DiscordSrvStatusBridge/config.yml`，在 `channel-id` 欄位中填入目標 Discord 頻道 ID。
+4. 重新載入或重啟伺服器以套用變更。
+5. 插件發送訊息後，會自動在 `config.yml` 中寫入 `message-id`。後續的狀態更新將會以編輯該訊息的方式進行。
+
+---
+
+## 支援的預留位置 (Placeholders)
+
+可在描述模板中使用的動態變數如下：
+
+| 預留位置 | 說明 |
+| :--- | :--- |
+| `{online}` | 當前線上玩家人數 |
+| `{max}` | 伺服器最大容納人數 |
+| `{tps}` | 當前 1 分鐘平均 TPS (格式化為 ##.##) |
+| `{tps_1m}` | 1 分鐘平均 TPS |
+| `{tps_5m}` | 5 分鐘平均 TPS |
+| `{tps_15m}` | 15 分鐘平均 TPS |
+| `{ram_used}` | 已使用記憶體 (MB) |
+| `{ram_max}` | 最大分配記憶體 (MB) |
+| `{ram_free}` | 剩餘可用記憶體 (MB) |
+| `{maintenance_status}` | 維護狀態文字 (依設定檔設定顯示) |
+| `{player_list}` | 線上玩家頭像超連結列表 (Markdown 格式) |
+| `{player_names}` | 線上玩家純文字清單 (以逗號分隔) |
+| `{server_version}` | 伺服器核心版本 |
+| `{last_updated}` | 上次更新時間 (格式: yyyy-MM-dd HH:mm:ss) |
+
+---
+
+## 設定檔範例 (config.yml)
 
 ```yaml
 # ==============================================================================
@@ -32,7 +55,7 @@
 # ==============================================================================
 
 # 目標 Discord 頻道 ID
-channel-id: "123456789012345678"
+channel-id: ""
 
 # 狀態訊息 ID（插件發送後會自動寫入此處，請勿手動修改）
 message-id: ""
@@ -68,22 +91,6 @@ embed-settings:
 
   # 狀態訊息的描述 (Description) 內容，支援 Placeholder 替換。
   # 說明：伺服器 IP 等靜態內容請直接在模板中填寫即可。
-  #
-  # 支援的動態 Placeholders：
-  # {online}             - 線上玩家人數
-  # {max}                - 伺服器最大人數
-  # {tps}                - 當前 1 分鐘平均 TPS (格式化為 ##.##)
-  # {tps_1m}             - 1 分鐘平均 TPS
-  # {tps_5m}             - 5 分鐘平均 TPS
-  # {tps_15m}            - 15 分鐘平均 TPS
-  # {ram_used}           - 已使用記憶體 (MB)
-  # {ram_max}            - 最大分配記憶體 (MB)
-  # {ram_free}           - 剩餘可用記憶體 (MB)
-  # {maintenance_status} - 維護狀態字串 (🛠️ 維護中 / ✅ 正常開放)
-  # {player_list}        - 玩家頭像超連結列表 (Markdown 格式)
-  # {player_names}       - 線上玩家純文字清單 (以逗號分隔)
-  # {server_version}     - 伺服器核心版本
-  # {last_updated}       - 上次更新時間 (格式: yyyy-MM-dd HH:mm:ss)
   description-template: |
     **伺服器位址**: `play.yourserver.com`
     **伺服器版本**: `{server_version}`
@@ -101,9 +108,9 @@ embed-settings:
 
 ---
 
-## 💻 本地編譯指南
+## 本地編譯指南
 
-本專案使用 Maven 進行建置。請確保您的開發環境中安裝有 **Java 21** 與 Maven。
+本專案使用 Maven 進行建置。請確保您的開發環境中安裝有 Java 21 與 Maven。
 
 在專案根目錄下執行以下指令進行編譯與打包：
 
@@ -111,5 +118,5 @@ embed-settings:
 mvn clean package
 ```
 
-編譯完成的 `.jar` 檔案將會生成於 `target` 目錄下：
+編譯完成的 .jar 檔案將會生成於 target 目錄下：
 `target/discordsrv-status-bridge-1.0.0-SNAPSHOT.jar`
