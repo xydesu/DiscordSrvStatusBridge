@@ -43,7 +43,7 @@ public class MaintenanceHook {
             
             if (apiInstance != null) {
                 // 從 public 介面 eu.kennytv.maintenance.api.MaintenanceApi 取得方法，防範 JPMS 強封裝限制
-                Class<?> apiClass = Class.forName("eu.kennytv.maintenance.api.MaintenanceApi", true, loader);
+                Class<?> apiClass = Class.forName("eu.kennytv.maintenance.api.Maintenance", true, loader);
                 Method isMaintenanceMethod = apiClass.getMethod("isMaintenance");
                 Object result = isMaintenanceMethod.invoke(apiInstance);
                 if (result instanceof Boolean) {

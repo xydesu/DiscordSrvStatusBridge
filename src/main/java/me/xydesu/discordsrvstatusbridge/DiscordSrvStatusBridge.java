@@ -65,7 +65,7 @@ public class DiscordSrvStatusBridge extends JavaPlugin implements Listener {
                 ClassLoader loader = maintenancePlugin.getClass().getClassLoader();
                 @SuppressWarnings("unchecked")
                 Class<? extends org.bukkit.event.Event> eventClass = 
-                    (Class<? extends org.bukkit.event.Event>) Class.forName("eu.kennytv.maintenance.api.event.MaintenanceStateChangeEvent", true, loader);
+                    (Class<? extends org.bukkit.event.Event>) Class.forName("eu.kennytv.maintenance.api.event.MaintenanceChangedEvent", true, loader);
                 
                 getServer().getPluginManager().registerEvent(
                     eventClass,
