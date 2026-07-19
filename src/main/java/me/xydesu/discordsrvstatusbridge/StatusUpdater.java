@@ -200,7 +200,7 @@ public class StatusUpdater {
         SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
         String lastUpdated = sdf.format(new Date());
 
-        // 5. 玩家清單與純文字清單 (供相容保留)
+        // 5. 玩家清單與純文字清單 (設有前 15 名玩家截斷防護)
         Collection<? extends Player> onlinePlayers = Bukkit.getOnlinePlayers();
         String avatarApiUrl = plugin.getConfig().getString("avatar-api-url", "https://minotar.net/helm/{uuid}/32.png");
 
@@ -211,8 +211,14 @@ public class StatusUpdater {
             playerList = noPlayersText;
             playerNames = "None";
         } else {
+            int limit = 15;
+            int total = onlinePlayers.size();
+            List<? extends Player> playerListCopy = new ArrayList<>(onlinePlayers);
+
+            // 處理 {player_list} (Markdown 帶頭像網址清單)
             StringBuilder sb = new StringBuilder();
-            for (Player player : onlinePlayers) {
+            for (int i = 0; i < Math.min(limit, total); i++) {
+                Player player = playerListCopy.get(i);
                 String uuidStr = player.getUniqueId().toString();
                 String nameStr = player.getName();
                 String url = avatarApiUrl
@@ -220,8 +226,21 @@ public class StatusUpdater {
                         .replace("{name}", nameStr);
                 sb.append("- [").append(nameStr).append("](").append(url).append(")\n");
             }
+            if (total > limit) {
+                sb.append("- *...以及其他 ").append(total - limit).append(" 位玩家*");
+            }
             playerList = sb.toString().trim();
-            playerNames = onlinePlayers.stream().map(Player::getName).collect(Collectors.joining(", "));
+
+            // 處理 {player_names} (純文字清單，防溢出)
+            List<String> names = playerListCopy.stream()
+                    .limit(limit)
+                    .map(Player::getName)
+                    .collect(Collectors.toList());
+            if (total > limit) {
+                playerNames = String.join(", ", names) + " ... (共 " + total + " 人)";
+            } else {
+                playerNames = String.join(", ", names);
+            }
         }
 
         // 開始替換
