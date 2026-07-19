@@ -204,16 +204,9 @@ public class DiscordSrvStatusBridge extends JavaPlugin implements Listener {
             changed = true;
         }
 
-        // v1.0.0 新增: 全域描述模板
-        if (!config.contains("description-template")) {
-            config.set("description-template", "");
-            changed = true;
-        }
-
         // v1.0.0 新增: 玩家名單權重排序
         if (!config.contains("player-sorting")) {
             config.set("player-sorting.enabled", true);
-            config.set("player-sorting.papi-weight-placeholder", "%luckperms_highest_group_weight%");
             config.set("player-sorting.permission-priority-list", java.util.Arrays.asList(
                     "group.admin",
                     "group.mod",
@@ -221,10 +214,6 @@ public class DiscordSrvStatusBridge extends JavaPlugin implements Listener {
             ));
             changed = true;
         } else {
-            if (!config.contains("player-sorting.papi-weight-placeholder")) {
-                config.set("player-sorting.papi-weight-placeholder", "%luckperms_highest_group_weight%");
-                changed = true;
-            }
             if (!config.contains("player-sorting.permission-priority-list")) {
                 java.util.List<String> list = new java.util.ArrayList<>();
                 // 嘗試從舊的 weights 或舊的 yaml 節點轉換
