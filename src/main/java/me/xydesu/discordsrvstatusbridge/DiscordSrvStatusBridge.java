@@ -20,6 +20,8 @@ public class DiscordSrvStatusBridge extends JavaPlugin implements Listener {
     private BukkitTask updateTask;
     private boolean discordSrvEnabled = false;
 
+    private BukkitTask immediateUpdateTask = null;
+
     @Override
     public void onEnable() {
         // 儲存預設設定檔
@@ -27,6 +29,11 @@ public class DiscordSrvStatusBridge extends JavaPlugin implements Listener {
 
         maintenanceHook = new MaintenanceHook(this);
         statusUpdater = new StatusUpdater(this, maintenanceHook);
+
+        // 如果重載插件時已經有玩家在線上，先載入頭像快取
+        for (org.bukkit.entity.Player player : Bukkit.getOnlinePlayers()) {
+            statusUpdater.fetchAvatarAsync(player.getUniqueId(), player.getName());
+        }
 
         // 註冊 Bukkit 事件監聽
         getServer().getPluginManager().registerEvents(this, this);
@@ -51,6 +58,9 @@ public class DiscordSrvStatusBridge extends JavaPlugin implements Listener {
     public void onDisable() {
         // 停止定時任務
         stopUpdateTask();
+        if (immediateUpdateTask != null) {
+            immediateUpdateTask.cancel();
+        }
 
         // 關機時同步將 Discord 狀態更新為「已關閉」
         if (discordSrvEnabled && statusUpdater != null) {
@@ -96,24 +106,34 @@ public class DiscordSrvStatusBridge extends JavaPlugin implements Listener {
 
     @EventHandler
     public void onPlayerJoin(PlayerJoinEvent event) {
-        triggerImmediateUpdate();
+        if (statusUpdater != null) {
+            statusUpdater.fetchAvatarAsync(event.getPlayer().getUniqueId(), event.getPlayer().getName());
+        }
+        startImmediateUpdateTask();
     }
 
     @EventHandler
     public void onPlayerQuit(PlayerQuitEvent event) {
-        triggerImmediateUpdate();
+        if (statusUpdater != null) {
+            statusUpdater.removeAvatarFromCache(event.getPlayer().getUniqueId());
+        }
+        startImmediateUpdateTask();
     }
 
     /**
-     * 觸發立即的非同步更新（稍作延遲以確保資料正確性）
+     * 啟動緩衝式立即更新，合併高頻觸發事件防速率限制
      */
-    private void triggerImmediateUpdate() {
-        if (discordSrvEnabled && statusUpdater != null) {
-            // 延遲 1 秒執行更新，以確保人數計算與狀態是最新的
-            Bukkit.getScheduler().runTaskLaterAsynchronously(this, () -> {
-                statusUpdater.updateStatus(false, false);
-            }, 20L);
+    public synchronized void startImmediateUpdateTask() {
+        if (!discordSrvEnabled || statusUpdater == null) {
+            return;
         }
+        if (immediateUpdateTask != null) {
+            immediateUpdateTask.cancel();
+        }
+        immediateUpdateTask = Bukkit.getScheduler().runTaskLaterAsynchronously(this, () -> {
+            statusUpdater.updateStatus(false, false);
+            immediateUpdateTask = null;
+        }, 20L); // 延遲 1 秒合併更新
     }
 
     // ==============================================================================

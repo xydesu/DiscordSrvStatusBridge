@@ -55,7 +55,7 @@ embed-settings:
   # {ram_max}            - 最大分配記憶體 (MB)
   # {ram_free}           - 剩餘可用記憶體 (MB)
   # {maintenance_status} - 維護狀態字串 (🛠️ 維護中 / ✅ 正常開放)
-  # {player_list}        - 玩家頭像超連結列表 (Markdown 格式，例如: [Name](AvatarURL))
+  # {player_list}        - 玩家頭像超連結列表 (Markdown 格式)
   # {player_names}       - 線上玩家純文字清單 (以逗號分隔，例如: xydesu, Player1)
   # {server_version}     - 伺服器核心版本
   # {last_updated}       - 上次更新時間 (格式: yyyy-MM-dd HH:mm:ss)
@@ -68,7 +68,6 @@ embed-settings:
     **系統效能**: `{tps} TPS` *(1m: {tps_1m} | 5m: {tps_5m} | 15m: {tps_15m})*
     **記憶體使用**: `{ram_used} MB / {ram_max} MB` *(剩餘 {ram_free} MB)*
     
-    **線上玩家**:
-    {player_list}
+    **線上玩家**: (頭像如下圖所示)
     
     *最後更新時間: {last_updated}*
