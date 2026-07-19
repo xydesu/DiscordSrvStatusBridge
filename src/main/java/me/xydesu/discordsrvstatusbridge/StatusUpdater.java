@@ -55,7 +55,7 @@ public class StatusUpdater {
             plugin.getLogger().info("已偵測並啟用 JDA 5 狀態更新引擎。");
         } catch (Throwable e) {
             this.isJda5 = false;
-            plugin.getLogger().info("已偵測並啟用 JDA 4 狀態更新引擎。");
+            plugin.getLogger().info("已偵測並啟用 JDA 4 狀態更新引擎。原因/異常: " + e.toString());
         }
     }
 
@@ -548,7 +548,12 @@ public class StatusUpdater {
             } else {
                 // JDA 4 核心發送機制
                 if (bytes != null) {
-                    Object act = channel.getClass().getMethod("sendFile", byte[].class, String.class).invoke(channel, bytes, "players.png");
+                    // JDA 4 TEXT CHANNEL sendFile 必須包含 AttachmentOption... 變長參數
+                    Class<?> optionClass = getJdaClass("github.scarsz.discordsrv.dependencies.jda.api.utils.AttachmentOption");
+                    Object optionArray = java.lang.reflect.Array.newInstance(optionClass, 0); // 傳入空陣列
+                    
+                    Method sendFileMethod = channel.getClass().getMethod("sendFile", byte[].class, String.class, optionArray.getClass());
+                    Object act = sendFileMethod.invoke(channel, bytes, "players.png", optionArray);
                     action = act.getClass().getMethod("embed", MessageEmbed.class).invoke(act, embed);
                 } else {
                     action = channel.getClass().getMethod("sendMessage", MessageEmbed.class).invoke(channel, embed);
