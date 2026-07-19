@@ -2,6 +2,7 @@ package me.xydesu.discordsrvstatusbridge;
 
 import org.bukkit.Bukkit;
 import org.bukkit.plugin.Plugin;
+import java.lang.reflect.Method;
 import java.util.logging.Level;
 
 /**
@@ -35,12 +36,16 @@ public class MaintenanceHook {
         }
 
         try {
-            // 反射載入 MaintenanceProvider
-            Class<?> providerClass = Class.forName("eu.kennytv.maintenance.api.MaintenanceProvider");
+            // 反射載入 MaintenanceProvider 與 API 介面
+            ClassLoader loader = maintenancePlugin.getClass().getClassLoader();
+            Class<?> providerClass = Class.forName("eu.kennytv.maintenance.api.MaintenanceProvider", true, loader);
             Object apiInstance = providerClass.getMethod("get").invoke(null);
+            
             if (apiInstance != null) {
-                // 呼叫 isMaintenance()
-                Object result = apiInstance.getClass().getMethod("isMaintenance").invoke(apiInstance);
+                // 從 public 介面 eu.kennytv.maintenance.api.MaintenanceApi 取得方法，防範 JPMS 強封裝限制
+                Class<?> apiClass = Class.forName("eu.kennytv.maintenance.api.MaintenanceApi", true, loader);
+                Method isMaintenanceMethod = apiClass.getMethod("isMaintenance");
+                Object result = isMaintenanceMethod.invoke(apiInstance);
                 if (result instanceof Boolean) {
                     return (boolean) result;
                 }

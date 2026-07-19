@@ -57,6 +57,28 @@ public class DiscordSrvStatusBridge extends JavaPlugin implements Listener {
         BridgeCommand cmd = new BridgeCommand(this);
         getCommand("discordsrvstatusbridge").setExecutor(cmd);
         getCommand("discordsrvstatusbridge").setTabCompleter(cmd);
+
+        // 註冊 Maintenance 事件監聽 (動態 EventExecutor 以防 NoClassDefFoundError)
+        org.bukkit.plugin.Plugin maintenancePlugin = getServer().getPluginManager().getPlugin("Maintenance");
+        if (maintenancePlugin != null && maintenancePlugin.isEnabled()) {
+            try {
+                ClassLoader loader = maintenancePlugin.getClass().getClassLoader();
+                @SuppressWarnings("unchecked")
+                Class<? extends org.bukkit.event.Event> eventClass = 
+                    (Class<? extends org.bukkit.event.Event>) Class.forName("eu.kennytv.maintenance.api.event.MaintenanceStateChangeEvent", true, loader);
+                
+                getServer().getPluginManager().registerEvent(
+                    eventClass,
+                    new org.bukkit.event.Listener() {},
+                    org.bukkit.event.EventPriority.MONITOR,
+                    (listener, event) -> startImmediateUpdateTask(),
+                    this
+                );
+                getLogger().info("已成功訂閱 Maintenance 維護狀態變更事件。");
+            } catch (Throwable t) {
+                getLogger().warning("訂閱 Maintenance 事件失敗: " + t.getMessage());
+            }
+        }
     }
 
     @Override
