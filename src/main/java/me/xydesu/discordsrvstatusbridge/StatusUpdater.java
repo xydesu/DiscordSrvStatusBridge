@@ -450,13 +450,16 @@ public class StatusUpdater {
             conn.setReadTimeout(5000);
             conn.setRequestProperty("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64)");
 
-            if (conn.getResponseCode() == 200) {
+            int responseCode = conn.getResponseCode();
+            if (responseCode == 200) {
                 try (InputStream in = conn.getInputStream()) {
                     return ImageIO.read(in);
                 }
+            } else {
+                plugin.getLogger().warning("頭像伺服器回傳錯誤碼 " + responseCode + " (" + urlStr + ")");
             }
         } catch (Exception e) {
-            // 忽略錯誤，回傳 null 以進入備用管道
+            plugin.getLogger().warning("無法連接頭像伺服器 (" + urlStr + "): " + e.getMessage());
         }
         return null;
     }
