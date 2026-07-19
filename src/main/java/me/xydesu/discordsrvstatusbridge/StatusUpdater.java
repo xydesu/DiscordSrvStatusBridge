@@ -741,6 +741,19 @@ public class StatusUpdater {
             return 0;
         }
 
+        // 優先嘗試使用 PAPI 直接取得權重
+        String papiPlaceholder = plugin.getConfig().getString("player-sorting.papi-weight-placeholder");
+        if (papiPlaceholder != null && !papiPlaceholder.isEmpty()) {
+            String parsed = PlaceholderAPIHook.setPlaceholders(player, papiPlaceholder);
+            if (parsed != null && !parsed.equals(papiPlaceholder)) {
+                try {
+                    return Integer.parseInt(parsed.trim());
+                } catch (NumberFormatException ignored) {
+                    // 解析失敗則 fallback 至權限列表
+                }
+            }
+        }
+
         java.util.List<String> weights = plugin.getConfig().getStringList("player-sorting.weights");
         if (weights == null || weights.isEmpty()) return 0;
 

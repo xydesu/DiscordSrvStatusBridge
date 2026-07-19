@@ -31,10 +31,13 @@ player-line-template: "- [{name}]({avatar_url})"
 
 
 # 玩家名單排序設定
-# 根據權限節點 (例如 LuckPerms 的 group.admin) 賦予權重。
-# 格式為 "權限節點:權重"。權重數字越大的玩家將會排在名單的越前面。若無匹配權限則權重為 0。
+# 您可以選擇使用 PlaceholderAPI 直接獲取玩家權重 (例如 LuckPerms 的權重變數)，這將是最精準且方便的做法。
+# 若留空或回傳非數字，將自動退回使用下方的權限節點對應表。
 player-sorting:
   enabled: true
+  papi-weight-placeholder: "%luckperms_highest_group_weight%"
+  # 根據權限節點 (例如 LuckPerms 的 group.admin) 賦予權重。
+  # 格式為 "權限節點:權重"。權重數字越大的玩家將會排在名單的越前面。若無匹配權限則權重為 0。
   weights:
     - "group.admin:100"
     - "group.mod:50"
