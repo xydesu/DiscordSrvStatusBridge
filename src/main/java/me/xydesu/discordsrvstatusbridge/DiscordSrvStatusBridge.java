@@ -214,10 +214,10 @@ public class DiscordSrvStatusBridge extends JavaPlugin implements Listener {
         if (!config.contains("player-sorting")) {
             config.set("player-sorting.enabled", true);
             config.set("player-sorting.papi-weight-placeholder", "%luckperms_highest_group_weight%");
-            config.set("player-sorting.weights", java.util.Arrays.asList(
-                    "group.admin:100",
-                    "group.mod:50",
-                    "group.vip:10"
+            config.set("player-sorting.permission-priority-list", java.util.Arrays.asList(
+                    "group.admin",
+                    "group.mod",
+                    "group.vip"
             ));
             changed = true;
         } else {
@@ -225,18 +225,31 @@ public class DiscordSrvStatusBridge extends JavaPlugin implements Listener {
                 config.set("player-sorting.papi-weight-placeholder", "%luckperms_highest_group_weight%");
                 changed = true;
             }
-            if (config.isConfigurationSection("player-sorting.weights")) {
-                // 自動將舊的樹狀 ConfigurationSection 轉換為字串 List，避免 Bukkit yaml 展開點號
-                org.bukkit.configuration.ConfigurationSection weights = config.getConfigurationSection("player-sorting.weights");
+            if (!config.contains("player-sorting.permission-priority-list")) {
                 java.util.List<String> list = new java.util.ArrayList<>();
-                if (weights != null) {
-                    for (String key : weights.getKeys(true)) {
-                        if (weights.isInt(key)) {
-                            list.add(key + ":" + weights.getInt(key));
+                // 嘗試從舊的 weights 或舊的 yaml 節點轉換
+                if (config.isConfigurationSection("player-sorting.weights")) {
+                    org.bukkit.configuration.ConfigurationSection weights = config.getConfigurationSection("player-sorting.weights");
+                    if (weights != null) {
+                        for (String key : weights.getKeys(true)) {
+                            if (weights.isInt(key)) {
+                                list.add(key);
+                            }
                         }
                     }
+                    config.set("player-sorting.weights", null);
+                } else if (config.isList("player-sorting.weights")) {
+                    for (String entry : config.getStringList("player-sorting.weights")) {
+                        String[] parts = entry.split(":");
+                        list.add(parts[0].trim());
+                    }
+                    config.set("player-sorting.weights", null);
                 }
-                config.set("player-sorting.weights", list);
+                
+                if (list.isEmpty()) {
+                    list.addAll(java.util.Arrays.asList("group.admin", "group.mod", "group.vip"));
+                }
+                config.set("player-sorting.permission-priority-list", list);
                 changed = true;
             }
         }

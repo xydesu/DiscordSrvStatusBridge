@@ -36,12 +36,13 @@ player-line-template: "- [{name}]({avatar_url})"
 player-sorting:
   enabled: true
   papi-weight-placeholder: "%luckperms_highest_group_weight%"
+  # 備用排序清單 (當 PAPI 權重為空或無法取得數字時生效)
   # 根據權限節點 (例如 LuckPerms 的 group.admin) 賦予權重。
-  # 格式為 "權限節點:權重"。權重數字越大的玩家將會排在名單的越前面。若無匹配權限則權重為 0。
-  weights:
-    - "group.admin:100"
-    - "group.mod:50"
-    - "group.vip:10"
+  # 寫在清單越「上方」的權限，代表在名單中擁有的優先級越高！
+  permission-priority-list:
+    - "group.admin"
+    - "group.mod"
+    - "group.vip"
 
 # 狀態訊息內容與外觀設定
 embed-settings:

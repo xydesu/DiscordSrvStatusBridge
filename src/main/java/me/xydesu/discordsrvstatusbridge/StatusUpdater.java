@@ -754,20 +754,18 @@ public class StatusUpdater {
             }
         }
 
-        java.util.List<String> weights = plugin.getConfig().getStringList("player-sorting.weights");
-        if (weights == null || weights.isEmpty()) return 0;
+        java.util.List<String> list = plugin.getConfig().getStringList("player-sorting.permission-priority-list");
+        if (list == null || list.isEmpty()) return 0;
 
         int maxWeight = 0;
-        for (String entry : weights) {
-            String[] parts = entry.split(":");
-            if (parts.length == 2) {
-                String perm = parts[0].trim();
-                try {
-                    int w = Integer.parseInt(parts[1].trim());
-                    if (player.hasPermission(perm) && w > maxWeight) {
-                        maxWeight = w;
-                    }
-                } catch (NumberFormatException ignored) {}
+        int size = list.size();
+        for (int i = 0; i < size; i++) {
+            String perm = list.get(i).trim();
+            if (player.hasPermission(perm)) {
+                int w = size - i; // 越上方 (index 越小) 權重越大
+                if (w > maxWeight) {
+                    maxWeight = w;
+                }
             }
         }
         return maxWeight;
