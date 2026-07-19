@@ -159,6 +159,8 @@ public class DiscordSrvStatusBridge extends JavaPlugin implements Listener {
         }
         immediateUpdateTask = Bukkit.getScheduler().runTaskLaterAsynchronously(this, () -> {
             statusUpdater.updateStatus(false, false);
+            // 執行完即時更新後，於主執行緒重設/重啟定時任務，實現 Timer 重置
+            Bukkit.getScheduler().runTask(this, this::startUpdateTask);
             immediateUpdateTask = null;
         }, 20L); // 延遲 1 秒合併更新
     }
