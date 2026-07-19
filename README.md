@@ -1,5 +1,9 @@
 # DiscordSrvStatusBridge
 
+[![Release](https://img.shields.io/github/v/release/xydesu/DiscordSrvStatusBridge?style=flat-square)](https://github.com/xydesu/DiscordSrvStatusBridge/releases)
+[![Downloads](https://img.shields.io/github/downloads/xydesu/DiscordSrvStatusBridge/total?style=flat-square)](https://github.com/xydesu/DiscordSrvStatusBridge/releases)
+[![License](https://img.shields.io/github/license/xydesu/DiscordSrvStatusBridge?style=flat-square)](LICENSE)
+
 一個用於在 Discord 頻道顯示 Minecraft 伺服器運作狀態的 DiscordSrv 附加組件。
 
 ## 下載
@@ -11,14 +15,17 @@
 ## 核心功能
 
 - **系統狀態監控**：取得伺服器 TPS（1分鐘、5分鐘、15分鐘平均值）以及系統記憶體（RAM）使用狀況。
-- **維護狀態整合**：支援與 Maintenance 插件對接，當伺服器開啟維護模式時，狀態訊息會切換為對應的標題與顏色，並支援維護模式變更事件的即時狀態同步。
-- **隱身插件相容 (Vanish)**：完美支援 SuperVanish, PremiumVanish, CMI 以及 EssentialsX Vanish。當管理員處於隱身狀態時，將自動從 Discord 線上人數、玩家清單、純文字名稱及頭像大圖中抹除，確保隱私。
-- **基岩版玩家支援 (Geyser/Floodgate)**：自動偵測 Geyser/Floodgate 基岩版玩家，並反射取得其 XUID，優先由 Geyser 官方 API 取得 Xbox 頭像，並具備前綴字元過濾機制防範頭像下載錯誤。
-- **大中型伺服器截斷防護**：設有前 15 名玩家截斷限制，大於 15 人時 Markdown 清單將自動以 `...以及其他 X 位玩家` 截斷，防範 Embed 描述文字過長。
-- **頭像拼接大圖**：當有玩家在線上時，自動將玩家頭像（每個 32x32，支援間距）拼接成一張網格大圖並作為附件上傳嵌入至 Discord Embed。最多支援拼接前 30 位玩家，若人數超過，最後一格將自動繪製為「+X」文字方塊，防止因人數過多導致 Discord 訊息長度溢出。
-- **關閉狀態編輯**：在伺服器停用（onDisable）時發送同步請求，將訊息更新為已關閉狀態，並自動清除舊有的大圖附件，確保大圖不會殘留在關閉訊息中。
-- **API 相容性設計**：使用反射調用 JDA API，相容不同版本 DiscordSrv 所內建的 JDA 4 或 JDA 5，減少因相依套件升級導致 plugin 崩潰的機率。
-- **自訂描述與行模板**：支援在設定檔中自訂描述格式，並提供 `player-line-template` 自訂每一位玩家行格式，相容稱號展示。同時**深度整合 PlaceholderAPI**，支援在狀態描述與玩家行格式中直接代入任意 PAPI 變數（如 %server_ram_used%、%player_ping% 等）。
+- **動態狀態訊息**：在伺服器運作中、維護中、或是關閉時，自動編輯並同步單一 Discord 訊息的標題與顏色。
+- **頭像拼接大圖**：當有玩家在線上時，自動將玩家頭像（支援間距）拼接成一張網格大圖並作為附件上傳嵌入，防範因人數過多導致 Embed 描述文字溢出。
+
+## 進階功能
+
+- **深度 PlaceholderAPI 相容**：支援在狀態描述與玩家專屬行格式中直接代入任意 PAPI 變數，並自動過濾傳統色碼與 MiniMessage 標籤。
+- **玩家清單權重排序**：支援依照權限節點（如 LuckPerms 群組）賦予權重，自訂名單與大圖頭像的排列順序。
+- **隱身插件相容 (Vanish)**：完美支援 SuperVanish, PremiumVanish, CMI 等。處於隱身狀態的玩家將自動從 Discord 上抹除。
+- **基岩版玩家支援 (Geyser/Floodgate)**：自動偵測基岩版玩家，優先由 Geyser 官方 API 取得 Xbox 頭像，並具備防錯過濾機制。
+- **維護模式對接**：支援與 Maintenance 插件整合，當伺服器開啟維護模式時，即時在 Discord 切換維護狀態。
+- **智慧防限流機制**：在觸發非同步的即時更新（如玩家登入）後，自動重設定時器週期，大幅減少重複發送造成的 Discord API 429 速率限制問題。
 
 ---
 
@@ -34,39 +41,31 @@
 
 ## 支援的預留位置 (Placeholders)
 
-### 狀態描述模板變數 (description-template)
+本插件支援在 `description-template` 與 `player-line-template` 中使用任意 **PlaceholderAPI** 變數（例如 `%server_ram_used%`、`%luckperms_primary_group_name%` 等）。
+
+除此之外，也提供以下內建的輕量變數：
+
+### 狀態描述模板 (description-template)
 
 | 預留位置 | 說明 |
 | :--- | :--- |
-| `{online}` | 當前線上玩家人數 (自動排除隱身玩家) |
-| `{max}` | 伺服器最大容納人數 |
+| `{online}` / `{max}` | 當前線上人數 (排除隱身) / 伺服器最大容納人數 |
 | `{tps}` | 當前 1 分鐘平均 TPS (格式化為 ##.##) |
-| `{tps_1m}` | 1 分鐘平均 TPS |
-| `{tps_5m}` | 5 分鐘平均 TPS |
-| `{tps_15m}` | 15 分鐘平均 TPS |
-| `{ram_used}` | 已使用記憶體 (MB) |
-| `{ram_max}` | 最大分配記憶體 (MB) |
-| `{ram_free}` | 剩餘可用記憶體 (MB) |
+| `{tps_1m}` / `{tps_5m}` / `{tps_15m}` | 各時段的平均 TPS |
+| `{ram_used}` / `{ram_max}` / `{ram_free}` | 記憶體使用情況 (MB) |
 | `{maintenance_status}` | 維護狀態文字 (依設定檔設定顯示) |
-| `{player_list}` | 線上玩家頭像超連結列表 (支援行模板，設有前 15 名玩家截斷) |
+| `{player_list}` | 線上玩家頭像超連結列表 (支援行模板，設有前 15 名截斷) |
 | `{player_names}` | 線上玩家純文字清單 (以逗號分隔，排除隱身玩家) |
 | `{server_version}` | 伺服器核心版本 |
 | `{last_updated}` | 上次更新時間 (格式: yyyy-MM-dd HH:mm:ss) |
 
-### 玩家清單行模板變數 (player-line-template)
+### 玩家清單行模板 (player-line-template)
 
 | 預留位置 | 說明 |
 | :--- | :--- |
-| `{name}` | 玩家的遊戲名稱 (例如 xydesu) |
-| `{uuid}` | 玩家的 UUID |
+| `{name}` / `{uuid}` | 玩家的遊戲名稱 / 玩家的 UUID |
 | `{avatar_url}` | 玩家的頭像 API 網址 (由設定檔中的 avatar-api-url 生成) |
-| `{display_name}` | 玩家的 DisplayName (通常包含聊天插件所設置的 prefix 稱號/字元) |
-
-### PlaceholderAPI 支援
-
-本插件支援在 `description-template` 與 `player-line-template` 中使用任意 **PlaceholderAPI** 變數（例如 `%server_ram_used%`、`%player_ping%`、`%luckperms_primary_group_name%` 等）：
-- **全域描述變數**：在 `description-template` 中使用時，會優先使用當前第一個線上玩家作為 PAPI 變數的上下文進行替換（若無玩家則以 null 處理）。
-- **玩家專屬變數**：在 `player-line-template` 中使用時，會對每一位玩家代入其對應的玩家上下文進行個人變數替換（例如顯示玩家個人的 ping 值或稱號）。
+| `{display_name}` | 玩家的 DisplayName (通常包含聊天插件所設置的 prefix) |
 
 ---
 
@@ -99,6 +98,16 @@ avatar-api-url: "https://minotar.net/helm/{uuid}/32.png"
 # 線上玩家清單 ({player_list}) 中，每一位玩家的顯示格式模板
 player-line-template: "- [{name}]({avatar_url})"
 
+# 玩家名單排序設定
+# 根據權限節點 (例如 LuckPerms 的 group.admin) 賦予權重。
+# 格式為 "權限節點:權重"。權重數字越大的玩家將會排在名單的越前面。若無匹配權限則權重為 0。
+player-sorting:
+  enabled: true
+  weights:
+    - "group.admin:100"
+    - "group.mod:50"
+    - "group.vip:10"
+
 # 狀態訊息內容與外觀設定
 embed-settings:
   # 當伺服器為不同狀態時的標題與顏色設定 (支援 Hex 色碼)
@@ -120,7 +129,6 @@ embed-settings:
   no-players-text: "*目前沒有玩家在線上*"
 
   # 狀態訊息的描述 (Description) 內容，支援 Placeholder 替換。
-  # 說明：伺服器 IP 等靜態內容請直接在模板中填寫即可。
   description-template: |
     **伺服器位址**: `play.yourserver.com`
     **伺服器版本**: `{server_version}`
