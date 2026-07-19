@@ -36,6 +36,7 @@ public class StatusUpdater {
     private final MaintenanceHook maintenanceHook;
     private boolean isUpdating = false;
     private boolean firstUpdate = true;
+    private boolean isSendingNewMessage = false;
 
     // 頭像快取
     private final Map<UUID, BufferedImage> avatarCache = new ConcurrentHashMap<>();
@@ -129,6 +130,12 @@ public class StatusUpdater {
                 }
             } else {
                 if (messageId.isEmpty()) {
+                    if (isSendingNewMessage) {
+                        plugin.getLogger().fine("目前已有狀態訊息正在發送中，暫緩此次發送。");
+                        isUpdating = false;
+                        return;
+                    }
+                    isSendingNewMessage = true;
                     // 發送新訊息（包含圖片附件）
                     sendEmbedWithAttachment(channel, imageBytes, embed, sync);
                 } else {
@@ -597,18 +604,30 @@ public class StatusUpdater {
                 plugin.getConfig().set("message-id", newId);
                 plugin.saveConfig();
                 plugin.getLogger().fine("已發送新的狀態訊息並記錄 ID: " + newId);
+                isSendingNewMessage = false; // 發送成功，解鎖
+            };
+
+            java.util.function.Consumer<Throwable> failureConsumer = throwable -> {
+                plugin.getLogger().warning("非同步發送狀態訊息失敗: " + throwable.getMessage());
+                isSendingNewMessage = false; // 發送失敗，解鎖
             };
 
             if (sync) {
-                Object msgObj = action.getClass().getMethod("complete").invoke(action);
-                if (msgObj instanceof Message) {
-                    successConsumer.accept((Message) msgObj);
+                try {
+                    Object msgObj = action.getClass().getMethod("complete").invoke(action);
+                    if (msgObj instanceof Message) {
+                        successConsumer.accept((Message) msgObj);
+                    }
+                } catch (Exception ex) {
+                    failureConsumer.accept(ex);
                 }
             } else {
-                action.getClass().getMethod("queue", java.util.function.Consumer.class).invoke(action, successConsumer);
+                action.getClass().getMethod("queue", java.util.function.Consumer.class, java.util.function.Consumer.class)
+                        .invoke(action, successConsumer, failureConsumer);
             }
         } catch (Exception e) {
             plugin.getLogger().log(Level.SEVERE, "發送帶有附件的 Discord 狀態 Embed 失敗: " + e.getMessage(), e);
+            isSendingNewMessage = false; // 異常，解鎖
         }
     }
 
