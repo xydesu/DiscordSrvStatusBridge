@@ -71,28 +71,28 @@ public class StatusUpdater {
         try {
             String channelIdInput = plugin.getConfig().getString("channel-id", "").trim();
             if (channelIdInput.isEmpty()) {
-                plugin.getLogger().warning("未設定 Discord channel-id，無法更新伺服器狀態。");
+                plugin.getLogger().warning(plugin.getMessages().raw("logger.channel-id-missing"));
                 isUpdating = false;
                 return;
             }
 
             String channelId = parseChannelId(channelIdInput);
             if (!channelId.matches("^\\d+$")) {
-                plugin.getLogger().warning("設定的頻道 ID \"" + channelIdInput + "\" 不是有效的 Snowflake 格式（應為純數字或頻道連結）。");
+                plugin.getLogger().warning(plugin.getMessages().raw("logger.channel-id-invalid", "id", channelIdInput));
                 isUpdating = false;
                 return;
             }
 
             // 取得 DiscordSrv 的 JDA 實例
             if (DiscordUtil.getJda() == null) {
-                plugin.getLogger().fine("DiscordSrv JDA 尚未就緒，略過本次更新。");
+                plugin.getLogger().fine(plugin.getMessages().raw("logger.jda-not-ready"));
                 isUpdating = false;
                 return;
             }
 
             TextChannel channel = DiscordUtil.getJda().getTextChannelById(channelId);
             if (channel == null) {
-                plugin.getLogger().warning("找不到指定 ID 的 Discord 頻道: " + channelId);
+                plugin.getLogger().warning(plugin.getMessages().raw("logger.channel-not-found", "id", channelId));
                 isUpdating = false;
                 return;
             }
@@ -111,7 +111,7 @@ public class StatusUpdater {
                 }
             }
             if (isAnyAvatarDownloading && !offlineMode) {
-                plugin.getLogger().fine("有線上玩家頭像下載中，暫緩 Discord 狀態更新，等候下載完成後自動刷新...");
+                plugin.getLogger().fine(plugin.getMessages().raw("logger.avatar-pending"));
                 isUpdating = false;
                 return;
             }
@@ -131,7 +131,7 @@ public class StatusUpdater {
             } else {
                 if (messageId.isEmpty()) {
                     if (isSendingNewMessage) {
-                        plugin.getLogger().fine("目前已有狀態訊息正在發送中，暫緩此次發送。");
+                        plugin.getLogger().fine(plugin.getMessages().raw("logger.message-sending-locked"));
                         isUpdating = false;
                         return;
                     }
@@ -144,7 +144,7 @@ public class StatusUpdater {
                 }
             }
         } catch (Exception e) {
-            plugin.getLogger().log(Level.SEVERE, "更新 Discord 狀態訊息時發生異常: " + e.getMessage(), e);
+            plugin.getLogger().log(Level.SEVERE, plugin.getMessages().raw("logger.update-error", "error", e.getMessage()), e);
         } finally {
             isUpdating = false;
         }
@@ -381,7 +381,7 @@ public class StatusUpdater {
             ImageIO.write(combined, "png", baos);
             return baos.toByteArray();
         } catch (Exception e) {
-            plugin.getLogger().log(Level.SEVERE, "生成玩家頭像拼接圖片時發生異常: " + e.getMessage(), e);
+            plugin.getLogger().log(Level.SEVERE, plugin.getMessages().raw("logger.avatar-generate-error", "error", e.getMessage()), e);
             return null;
         }
     }
@@ -503,7 +503,7 @@ public class StatusUpdater {
                     });
                 }
             } catch (Exception e) {
-                plugin.getLogger().warning("下載玩家 " + name + " (" + uuid + ") 的頭像失敗: " + e.getMessage());
+                plugin.getLogger().warning(plugin.getMessages().raw("logger.avatar-download-error", "name", name, "uuid", uuid.toString(), "error", e.getMessage()));
             } finally {
                 downloadingAvatars.remove(uuid);
             }
@@ -525,10 +525,10 @@ public class StatusUpdater {
                     return ImageIO.read(in);
                 }
             } else {
-                plugin.getLogger().warning("頭像伺服器回傳錯誤碼 " + responseCode + " (" + urlStr + ")");
+                plugin.getLogger().warning(plugin.getMessages().raw("logger.avatar-http-error", "code", String.valueOf(responseCode), "url", urlStr));
             }
         } catch (Exception e) {
-            plugin.getLogger().warning("無法連接頭像伺服器 (" + urlStr + "): " + e.getMessage());
+            plugin.getLogger().warning(plugin.getMessages().raw("logger.avatar-connect-error", "url", urlStr, "error", e.getMessage()));
         }
         return null;
     }
@@ -603,12 +603,12 @@ public class StatusUpdater {
                 String newId = message.getId();
                 plugin.getConfig().set("message-id", newId);
                 plugin.saveConfig();
-                plugin.getLogger().fine("已發送新的狀態訊息並記錄 ID: " + newId);
+                plugin.getLogger().fine(plugin.getMessages().raw("logger.message-sent", "id", newId));
                 isSendingNewMessage = false; // 發送成功，解鎖
             };
 
             java.util.function.Consumer<Throwable> failureConsumer = throwable -> {
-                plugin.getLogger().warning("非同步發送狀態訊息失敗: " + throwable.getMessage());
+                plugin.getLogger().warning(plugin.getMessages().raw("logger.message-send-error", "error", throwable.getMessage()));
                 isSendingNewMessage = false; // 發送失敗，解鎖
             };
 
@@ -626,7 +626,7 @@ public class StatusUpdater {
                         .invoke(action, successConsumer, failureConsumer);
             }
         } catch (Exception e) {
-            plugin.getLogger().log(Level.SEVERE, "發送帶有附件的 Discord 狀態 Embed 失敗: " + e.getMessage(), e);
+            plugin.getLogger().log(Level.SEVERE, plugin.getMessages().raw("logger.embed-send-error", "error", e.getMessage()), e);
             isSendingNewMessage = false; // 異常，解鎖
         }
     }
@@ -643,7 +643,7 @@ public class StatusUpdater {
             };
 
             java.util.function.Consumer<Throwable> failureConsumer = throwable -> {
-                plugin.getLogger().warning("無法取得訊息 ID " + messageId + "，將清除 ID 並於下次更新重新發送。");
+                plugin.getLogger().warning(plugin.getMessages().raw("logger.message-not-found", "id", messageId));
                 plugin.getConfig().set("message-id", "");
                 plugin.saveConfig();
             };
@@ -662,7 +662,7 @@ public class StatusUpdater {
                         .invoke(retrieveAction, successConsumer, failureConsumer);
             }
         } catch (Exception e) {
-            plugin.getLogger().log(Level.SEVERE, "取得 Discord 訊息失敗: " + e.getMessage(), e);
+            plugin.getLogger().log(Level.SEVERE, plugin.getMessages().raw("logger.message-fetch-error", "error", e.getMessage()), e);
         }
     }
 
@@ -673,7 +673,7 @@ public class StatusUpdater {
         try {
             if (bytes != null) {
                 // JDA 4 不支援編輯時更換/上傳附件，手動拋出以進入 JDA 4 回退刪除重建機制
-                throw new NoSuchMethodException("JDA 4 不支援編輯附件");
+                throw new NoSuchMethodException("JDA 4 does not support editing attachments");
             } else {
                 // 無附件的編輯，直接更新 Embed 內容即可
                 Object editAction = message.getClass().getMethod("editMessage", MessageEmbed.class).invoke(message, embed);
@@ -687,12 +687,12 @@ public class StatusUpdater {
             // JDA 4 附件更新回退方案：刪除舊訊息並發送新訊息
             deleteAndRecreate(message, bytes, embed, sync, channel);
         } catch (Exception e) {
-            plugin.getLogger().log(Level.SEVERE, "執行 Discord 編輯失敗: " + e.getMessage(), e);
+            plugin.getLogger().log(Level.SEVERE, plugin.getMessages().raw("logger.message-edit-error", "error", e.getMessage()), e);
         }
     }
 
     private void deleteAndRecreate(Message message, byte[] bytes, MessageEmbed embed, boolean sync, TextChannel channel) {
-        plugin.getLogger().fine("目前環境不支援編輯附件（JDA 4），將以「刪除舊訊息並發送新訊息」方式更新圖片...");
+        plugin.getLogger().fine(plugin.getMessages().raw("logger.jda4-attachment-note"));
 
         java.util.function.Consumer<Void> deleteSuccess = v -> {
             sendEmbedWithAttachment(channel, bytes, embed, sync);
@@ -726,10 +726,10 @@ public class StatusUpdater {
                 }
                 // 同步發送全新的不帶附件的關機狀態訊息，確保大圖徹底消失
                 sendEmbedWithAttachment(channel, null, embed, true);
-                plugin.getLogger().info("已同步重發 Discord 狀態為「已關閉」以清除頭像大圖");
+                plugin.getLogger().info(plugin.getMessages().raw("logger.offline-status-sent"));
             }
         } catch (Exception e) {
-            plugin.getLogger().log(Level.WARNING, "同步編輯 Discord 關機訊息失敗: " + e.getMessage());
+            plugin.getLogger().log(Level.WARNING, plugin.getMessages().raw("logger.offline-status-error", "error", e.getMessage()));
         }
     }
 
@@ -785,7 +785,7 @@ public class StatusUpdater {
      */
     private void detectAndCleanDuplicateMessages(TextChannel channel) {
         try {
-            plugin.getLogger().info("正在掃描頻道中的歷史狀態訊息以防止重複發送...");
+            plugin.getLogger().info(plugin.getMessages().raw("logger.scan-start"));
             
             // 1. 獲取 MessageHistory
             Object historyObj = channel.getClass().getMethod("getHistory").invoke(channel);
@@ -839,7 +839,8 @@ public class StatusUpdater {
                 
                 // 只要 Title 包含設定檔中定義的運作中、維護中、或關閉中標題，即判定為本插件的狀態訊息
                 boolean matchesTitle = title.contains(onlineTitle) || title.contains(maintenanceTitle) || title.contains(offlineTitle);
-                boolean matchesDesc = desc != null && (desc.contains("線上人數") || desc.contains("系統效能") || desc.contains("最後更新時間"));
+                // Title 比對已足夠判斷；desc 比對的關鍵字由用戶決定故不強制檢查
+                boolean matchesDesc = false;
                 
                 if (matchesTitle || matchesDesc) {
                     matchingMessages.add(msg);
@@ -847,11 +848,11 @@ public class StatusUpdater {
             }
             
             if (matchingMessages.isEmpty()) {
-                plugin.getLogger().info("掃描完成：未發現任何舊有狀態訊息。");
+                plugin.getLogger().info(plugin.getMessages().raw("logger.scan-none-found"));
                 return;
             }
             
-            plugin.getLogger().info("掃描完成：發現 " + matchingMessages.size() + " 條舊狀態訊息。");
+            plugin.getLogger().info(plugin.getMessages().raw("logger.scan-found", "count", String.valueOf(matchingMessages.size())));
             
             Message messageToKeep = null;
             
@@ -871,7 +872,7 @@ public class StatusUpdater {
                 String newBindId = messageToKeep.getId();
                 plugin.getConfig().set("message-id", newBindId);
                 plugin.saveConfig();
-                plugin.getLogger().info("已自動對接並綁定偵測到的最新狀態訊息 ID: " + newBindId);
+                plugin.getLogger().info(plugin.getMessages().raw("logger.scan-bound", "id", newBindId));
             }
             
             // 3. 將其餘所有重複的狀態訊息通通刪除
@@ -888,11 +889,11 @@ public class StatusUpdater {
             }
             
             if (deletedCount > 0) {
-                plugin.getLogger().info("已成功清理 " + deletedCount + " 條重複的舊狀態訊息。");
+                plugin.getLogger().info(plugin.getMessages().raw("logger.scan-cleaned", "count", String.valueOf(deletedCount)));
             }
             
         } catch (Exception e) {
-            plugin.getLogger().log(Level.WARNING, "執行重複訊息偵測與清理時發生異常: " + e.getMessage());
+            plugin.getLogger().log(Level.WARNING, plugin.getMessages().raw("logger.scan-error", "error", e.getMessage()));
         }
     }
 }

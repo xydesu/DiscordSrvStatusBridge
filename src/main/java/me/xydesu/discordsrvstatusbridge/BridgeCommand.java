@@ -10,10 +10,10 @@ import java.util.Collections;
 import java.util.List;
 
 /**
- * 處理 DiscordSrvStatusBridge 插件的管理指令。
- * 支援重新載入設定檔 (/dssb reload) 以及強制立即更新 Discord 狀態 (/dssb update)。
+ * Handles admin commands for DiscordSrvStatusBridge.
+ * Supports config reload (/dssb reload) and forced status update (/dssb update).
  *
- * 作者: xydesu
+ * Author: xydesu
  */
 public class BridgeCommand implements CommandExecutor, TabCompleter {
 
@@ -25,8 +25,10 @@ public class BridgeCommand implements CommandExecutor, TabCompleter {
 
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
+        Messages msg = plugin.getMessages();
+
         if (!sender.hasPermission("discordsrvstatusbridge.admin")) {
-            sender.sendMessage("§c你沒有權限執行此指令！");
+            sender.sendMessage(msg.get("command.no-permission"));
             return true;
         }
 
@@ -38,8 +40,9 @@ public class BridgeCommand implements CommandExecutor, TabCompleter {
         String sub = args[0].toLowerCase();
         if (sub.equals("reload")) {
             plugin.reloadConfig();
-            sender.sendMessage("§a[DiscordSrvStatusBridge] 設定檔已成功重新載入！");
-            
+            plugin.getMessages().load();
+            sender.sendMessage(msg.get("command.reload-success"));
+
             // 重新讀取後，強制立即非同步更新一次，並重設計時器
             if (plugin.getStatusUpdater() != null) {
                 plugin.getStatusUpdater().updateStatus(false, false);
@@ -51,23 +54,23 @@ public class BridgeCommand implements CommandExecutor, TabCompleter {
             } else {
                 plugin.startUpdateTask();
             }
-            sender.sendMessage("§a[DiscordSrvStatusBridge] 已重新套用更新任務排程並觸發更新。");
+            sender.sendMessage(msg.get("command.reload-task-reset"));
             return true;
         } else if (sub.equals("update")) {
-            sender.sendMessage("§a[DiscordSrvStatusBridge] 開始強制更新狀態...");
+            sender.sendMessage(msg.get("command.update-start"));
             if (plugin.getStatusUpdater() != null) {
                 plugin.getStatusUpdater().updateStatus(false, false);
-                
+
                 // 強制更新後，計算完整週期延遲來重設/重啟定時器
                 long intervalTicks = plugin.getConfig().getLong("update-interval-seconds", 30L) * 20L;
                 if (intervalTicks < 200L) {
                     intervalTicks = 600L;
                 }
                 plugin.startUpdateTask(intervalTicks);
-                
-                sender.sendMessage("§a[DiscordSrvStatusBridge] 已強制觸發狀態更新並重置定時器。");
+
+                sender.sendMessage(msg.get("command.update-success"));
             } else {
-                sender.sendMessage("§c[DiscordSrvStatusBridge] 狀態更新器未就緒！");
+                sender.sendMessage(msg.get("command.update-not-ready"));
             }
             return true;
         }
@@ -77,9 +80,10 @@ public class BridgeCommand implements CommandExecutor, TabCompleter {
     }
 
     private void sendHelp(CommandSender sender, String label) {
-        sender.sendMessage("§b=== DiscordSrvStatusBridge 指令說明 ===");
-        sender.sendMessage("§a/" + label + " reload §7- 重新載入設定檔並套用更新");
-        sender.sendMessage("§a/" + label + " update §7- 強制立即更新 Discord 狀態");
+        Messages msg = plugin.getMessages();
+        sender.sendMessage(msg.get("command.help-header"));
+        sender.sendMessage(msg.get("command.help-reload", "label", label));
+        sender.sendMessage(msg.get("command.help-update", "label", label));
     }
 
     @Override

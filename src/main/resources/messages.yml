@@ -1,0 +1,58 @@
+# ==============================================================================
+# DiscordSrvStatusBridge - Messages Configuration
+# Author: xydesu
+# All plugin messages can be customized here.
+# Color codes using & or § are supported in command responses.
+# ==============================================================================
+
+# ---  Command Responses  ---
+command:
+  no-permission: "&cYou don't have permission to execute this command!"
+  help-header: "&b=== DiscordSrvStatusBridge Commands ==="
+  help-reload: "&a/{label} reload &7- Reload config and apply changes"
+  help-update: "&a/{label} update &7- Force an immediate Discord status update"
+  reload-success: "&a[DiscordSrvStatusBridge] Config reloaded successfully!"
+  reload-task-reset: "&a[DiscordSrvStatusBridge] Update task has been rescheduled."
+  update-start: "&a[DiscordSrvStatusBridge] Forcing status update..."
+  update-success: "&a[DiscordSrvStatusBridge] Status update triggered and timer reset."
+  update-not-ready: "&c[DiscordSrvStatusBridge] Status updater is not ready!"
+
+# --- Logger Messages (console) ---
+logger:
+  discordsrv-subscribed: "Successfully subscribed to DiscordSRV API events."
+  discordsrv-subscribe-error: "Error subscribing to DiscordSRV API, starting update task directly: {error}"
+  discordsrv-not-found: "DiscordSRV plugin not detected. Monitoring will start after DiscordSRV loads."
+  discordsrv-ready: "DiscordSRV connected, starting status bridge."
+  maintenance-subscribed: "Successfully subscribed to Maintenance state change events."
+  maintenance-subscribe-error: "Failed to subscribe to Maintenance events: {error}"
+  maintenance-api-missing: "Cannot find Maintenance API class. Please notify the author if the API has been updated."
+  maintenance-api-error: "Error interacting with Maintenance API: {error}"
+  shutdown-updating: "Server shutting down, updating Discord status..."
+  task-started: "Status monitor task started (update interval: {interval}s)."
+  config-updated: "Missing config keys have been automatically added to config.yml!"
+  channel-id-missing: "Discord channel-id is not set. Cannot update server status."
+  channel-id-invalid: "Configured channel ID \"{id}\" is not a valid Snowflake format (must be a numeric ID or channel link)."
+  jda-not-ready: "DiscordSRV JDA is not ready yet, skipping this update."
+  channel-not-found: "Cannot find the Discord channel with ID: {id}"
+  avatar-pending: "Waiting for avatar downloads to complete before updating Discord status..."
+  message-sending-locked: "A status message is already being sent, skipping this update."
+  update-error: "Error updating Discord status message: {error}"
+  avatar-generate-error: "Error generating player avatar grid image: {error}"
+  avatar-download-error: "Failed to download avatar for player {name} ({uuid}): {error}"
+  avatar-http-error: "Avatar server returned error code {code} for URL: {url}"
+  avatar-connect-error: "Cannot connect to avatar server ({url}): {error}"
+  message-sent: "New status message sent with ID: {id}"
+  message-send-error: "Failed to send status message asynchronously: {error}"
+  embed-send-error: "Failed to send Discord status embed with attachment: {error}"
+  message-not-found: "Cannot retrieve message ID {id}, clearing ID and will re-send on next update."
+  message-fetch-error: "Failed to fetch Discord message: {error}"
+  message-edit-error: "Failed to execute Discord message edit: {error}"
+  jda4-attachment-note: "Current environment does not support editing attachments (JDA 4), using delete-and-resend strategy for image updates."
+  offline-status-sent: "Successfully updated Discord status to offline and cleared avatar image."
+  offline-status-error: "Failed to sync Discord offline status update: {error}"
+  scan-start: "Scanning channel history for existing status messages to prevent duplicates..."
+  scan-none-found: "Scan complete: No existing status messages found."
+  scan-found: "Scan complete: Found {count} existing status message(s)."
+  scan-bound: "Auto-bound to detected status message ID: {id}"
+  scan-cleaned: "Successfully cleaned up {count} duplicate status message(s)."
+  scan-error: "Error during duplicate message detection and cleanup: {error}"

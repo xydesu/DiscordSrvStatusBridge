@@ -9,9 +9,9 @@ import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitTask;
 
 /**
- * 插件主類別，處理生命週期、事件監聽以及與 DiscordSrv 的橋接。
+ * Plugin main class. Handles lifecycle, event listening, and DiscordSRV bridging.
  *
- * 作者: xydesu
+ * Author: xydesu
  */
 public class DiscordSrvStatusBridge extends JavaPlugin implements Listener {
 
@@ -19,57 +19,53 @@ public class DiscordSrvStatusBridge extends JavaPlugin implements Listener {
     private StatusUpdater statusUpdater;
     private BukkitTask updateTask;
     private boolean discordSrvEnabled = false;
+    private Messages messages;
 
     private BukkitTask immediateUpdateTask = null;
 
     @Override
     public void onEnable() {
-        // 儲存預設設定檔
         saveDefaultConfig();
-        
-        // 自動檢查並更新缺失的設定項
         updateConfig();
+
+        messages = new Messages(this);
 
         maintenanceHook = new MaintenanceHook(this);
         statusUpdater = new StatusUpdater(this, maintenanceHook);
 
-        // 如果重載插件時已經有玩家在線上，先載入頭像快取
+        // 若 reload 時已有玩家在線，預先載入頭像快取
         for (org.bukkit.entity.Player player : Bukkit.getOnlinePlayers()) {
             statusUpdater.fetchAvatarAsync(player.getUniqueId(), player.getName());
         }
 
-        // 註冊 Bukkit 事件監聽
         getServer().getPluginManager().registerEvents(this, this);
 
-        // 檢查 DiscordSrv 是否啟用
         if (getServer().getPluginManager().isPluginEnabled("DiscordSRV")) {
             discordSrvEnabled = true;
             try {
-                // 註冊 DiscordSrv API 監聽器
                 github.scarsz.discordsrv.DiscordSRV.api.subscribe(new DiscordSrvListener());
-                getLogger().info("已成功訂閱 DiscordSrv API 事件。");
+                getLogger().info(messages.raw("logger.discordsrv-subscribed"));
             } catch (Throwable t) {
-                getLogger().warning("訂閱 DiscordSrv API 時發生異常，將直接啟動更新任務: " + t.getMessage());
+                getLogger().warning(messages.raw("logger.discordsrv-subscribe-error", "error", t.getMessage()));
                 startUpdateTask();
             }
         } else {
-            getLogger().warning("未偵測到啟用的 DiscordSRV 插件。將在 DiscordSrv 載入後才執行監控。");
+            getLogger().warning(messages.raw("logger.discordsrv-not-found"));
         }
 
-        // 註冊管理指令
         BridgeCommand cmd = new BridgeCommand(this);
         getCommand("discordsrvstatusbridge").setExecutor(cmd);
         getCommand("discordsrvstatusbridge").setTabCompleter(cmd);
 
-        // 註冊 Maintenance 事件監聽 (動態 EventExecutor 以防 NoClassDefFoundError)
+        // 動態訂閱 Maintenance 事件，防止 NoClassDefFoundError
         org.bukkit.plugin.Plugin maintenancePlugin = getServer().getPluginManager().getPlugin("Maintenance");
         if (maintenancePlugin != null && maintenancePlugin.isEnabled()) {
             try {
                 ClassLoader loader = maintenancePlugin.getClass().getClassLoader();
                 @SuppressWarnings("unchecked")
-                Class<? extends org.bukkit.event.Event> eventClass = 
+                Class<? extends org.bukkit.event.Event> eventClass =
                     (Class<? extends org.bukkit.event.Event>) Class.forName("eu.kennytv.maintenance.api.event.MaintenanceChangedEvent", true, loader);
-                
+
                 getServer().getPluginManager().registerEvent(
                     eventClass,
                     new org.bukkit.event.Listener() {},
@@ -77,49 +73,46 @@ public class DiscordSrvStatusBridge extends JavaPlugin implements Listener {
                     (listener, event) -> startImmediateUpdateTask(),
                     this
                 );
-                getLogger().info("已成功訂閱 Maintenance 維護狀態變更事件。");
+                getLogger().info(messages.raw("logger.maintenance-subscribed"));
             } catch (Throwable t) {
-                getLogger().warning("訂閱 Maintenance 事件失敗: " + t.getMessage());
+                getLogger().warning(messages.raw("logger.maintenance-subscribe-error", "error", t.getMessage()));
             }
         }
     }
 
     @Override
     public void onDisable() {
-        // 停止定時任務
         stopUpdateTask();
         if (immediateUpdateTask != null) {
             immediateUpdateTask.cancel();
         }
 
-        // 關機時同步將 Discord 狀態更新為「已關閉」
         if (discordSrvEnabled && statusUpdater != null) {
-            getLogger().info("伺服器關閉中，正在更新 Discord 狀態...");
+            getLogger().info(messages.raw("logger.shutdown-updating"));
             statusUpdater.updateStatus(true, true);
         }
     }
 
     /**
-     * 啟動異步定時更新狀態任務，預設延遲 2 秒後首次執行
+     * Starts the async status update task with a 2-second initial delay.
      */
     public void startUpdateTask() {
-        startUpdateTask(40L); // 預設延遲 2 秒以盡快初始化狀態
+        startUpdateTask(40L);
     }
 
     /**
-     * 啟動異步定時更新狀態任務，並指定首次執行的延遲 tick 數
+     * Starts the async status update task with a custom initial delay.
      *
-     * @param firstDelayTicks 首次執行的延遲
+     * @param firstDelayTicks Initial delay in ticks before the first execution
      */
     public void startUpdateTask(long firstDelayTicks) {
         stopUpdateTask();
 
         long intervalTicks = getConfig().getLong("update-interval-seconds", 30L) * 20L;
-        if (intervalTicks < 200L) { // 限制最低不得低於 10 秒
+        if (intervalTicks < 200L) {
             intervalTicks = 600L;
         }
 
-        // 使用 Bukkit Scheduler 每隔指定時間更新狀態
         updateTask = Bukkit.getScheduler().runTaskTimerAsynchronously(this, () -> {
             if (statusUpdater != null) {
                 statusUpdater.updateStatus(false, false);
@@ -128,12 +121,12 @@ public class DiscordSrvStatusBridge extends JavaPlugin implements Listener {
 
         // 僅在預設 2 秒延遲啟動時印出日誌，防止計時器重置時洗版日誌
         if (firstDelayTicks == 40L) {
-            getLogger().info("已啟動伺服器狀態監控任務（更新頻率：" + (intervalTicks / 20) + " 秒）。");
+            getLogger().info(messages.raw("logger.task-started", "interval", String.valueOf(intervalTicks / 20)));
         }
     }
 
     /**
-     * 停止更新任務
+     * Stops the currently running update task.
      */
     public void stopUpdateTask() {
         if (updateTask != null) {
@@ -143,7 +136,7 @@ public class DiscordSrvStatusBridge extends JavaPlugin implements Listener {
     }
 
     // ==============================================================================
-    // 玩家事件處理：當玩家加入/離開時，立即觸發狀態更新
+    // Player event handlers: trigger an immediate status update on join/quit
     // ==============================================================================
 
     @EventHandler
@@ -163,7 +156,7 @@ public class DiscordSrvStatusBridge extends JavaPlugin implements Listener {
     }
 
     /**
-     * 啟動緩衝式立即更新，合併高頻觸發事件防速率限制
+     * Schedules a debounced immediate update to merge rapid consecutive events.
      */
     public synchronized void startImmediateUpdateTask() {
         if (!discordSrvEnabled || statusUpdater == null) {
@@ -174,39 +167,47 @@ public class DiscordSrvStatusBridge extends JavaPlugin implements Listener {
         }
         immediateUpdateTask = Bukkit.getScheduler().runTaskLaterAsynchronously(this, () -> {
             statusUpdater.updateStatus(false, false);
-            
-            // 執行完即時更新後，計算一個完整的更新週期延遲，並重設/重啟定時監控任務，以防重複更新
+
+            // 以完整週期延遲重設定時器，防止即時更新後立即重複觸發
             long intervalTicks = getConfig().getLong("update-interval-seconds", 30L) * 20L;
             if (intervalTicks < 200L) {
                 intervalTicks = 600L;
             }
             final long delay = intervalTicks;
             Bukkit.getScheduler().runTask(this, () -> startUpdateTask(delay));
-            
+
             immediateUpdateTask = null;
-        }, 20L); // 延遲 1 秒合併更新
+        }, 20L);
     }
 
     public StatusUpdater getStatusUpdater() {
         return statusUpdater;
     }
 
+    public Messages getMessages() {
+        return messages;
+    }
+
     /**
-     * 動態補全缺少的新版本設定項，確保舊版設定檔無縫升級且保留註解
+     * Fills in missing config keys to ensure seamless upgrades from older versions.
      */
     private void updateConfig() {
         boolean changed = false;
         org.bukkit.configuration.file.FileConfiguration config = getConfig();
 
-        // v1.0.0 新增: 玩家列表自訂格式
         if (!config.contains("player-line-template")) {
             config.set("player-line-template", "- [{name}]({avatar_url})");
             changed = true;
         }
 
-        // v1.0.0 新增: 玩家名單權重排序
+        if (!config.contains("description-template")) {
+            config.set("description-template", "");
+            changed = true;
+        }
+
         if (!config.contains("player-sorting")) {
             config.set("player-sorting.enabled", true);
+            config.set("player-sorting.papi-weight-placeholder", "%luckperms_highest_group_weight%");
             config.set("player-sorting.permission-priority-list", java.util.Arrays.asList(
                     "group.admin",
                     "group.mod",
@@ -214,9 +215,12 @@ public class DiscordSrvStatusBridge extends JavaPlugin implements Listener {
             ));
             changed = true;
         } else {
+            if (!config.contains("player-sorting.papi-weight-placeholder")) {
+                config.set("player-sorting.papi-weight-placeholder", "%luckperms_highest_group_weight%");
+                changed = true;
+            }
             if (!config.contains("player-sorting.permission-priority-list")) {
                 java.util.List<String> list = new java.util.ArrayList<>();
-                // 嘗試從舊的 weights 或舊的 yaml 節點轉換
                 if (config.isConfigurationSection("player-sorting.weights")) {
                     org.bukkit.configuration.ConfigurationSection weights = config.getConfigurationSection("player-sorting.weights");
                     if (weights != null) {
@@ -234,7 +238,7 @@ public class DiscordSrvStatusBridge extends JavaPlugin implements Listener {
                     }
                     config.set("player-sorting.weights", null);
                 }
-                
+
                 if (list.isEmpty()) {
                     list.addAll(java.util.Arrays.asList("group.admin", "group.mod", "group.vip"));
                 }
@@ -245,26 +249,24 @@ public class DiscordSrvStatusBridge extends JavaPlugin implements Listener {
 
         if (changed) {
             saveConfig();
-            getLogger().info("已自動將缺失的新版本設定項補齊至 config.yml 中！");
+            getLogger().info("Missing config keys have been automatically added to config.yml!");
         }
     }
 
     // ==============================================================================
-    // DiscordSrv API 監聽內部類別
-    // 避免在此類別初始化前載入 DiscordSrv API 類別以防止 ClassNotFoundException
+    // Inner class for DiscordSRV API listener
+    // Loaded lazily to prevent ClassNotFoundException during plugin initialization
     // ==============================================================================
 
     private class DiscordSrvListener {
 
         @github.scarsz.discordsrv.api.Subscribe
         public void discordReady(github.scarsz.discordsrv.api.events.DiscordReadyEvent event) {
-            getLogger().info("DiscordSrv 已成功連線，開始狀態橋接。");
-            
-            // 在 Bukkit 同步執行緒中啟動更新排程
+            getLogger().info(messages.raw("logger.discordsrv-ready"));
+
             Bukkit.getScheduler().runTask(DiscordSrvStatusBridge.this, () -> {
                 startUpdateTask();
-                
-                // 立即非同步更新一次
+
                 Bukkit.getScheduler().runTaskAsynchronously(DiscordSrvStatusBridge.this, () -> {
                     statusUpdater.updateStatus(false, false);
                 });

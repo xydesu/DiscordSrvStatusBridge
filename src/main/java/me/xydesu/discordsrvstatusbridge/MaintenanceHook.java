@@ -51,9 +51,9 @@ public class MaintenanceHook {
                 }
             }
         } catch (ClassNotFoundException e) {
-            plugin.getLogger().log(Level.WARNING, "找不到 Maintenance API 類別。若有更新 API 請通知作者。");
+            plugin.getLogger().log(Level.WARNING, plugin.getMessages().raw("logger.maintenance-api-missing"));
         } catch (Exception e) {
-            plugin.getLogger().log(Level.WARNING, "與 Maintenance API 互動時發生異常: " + e.getMessage());
+            plugin.getLogger().log(Level.WARNING, plugin.getMessages().raw("logger.maintenance-api-error", "error", e.getMessage()));
         }
         return false;
     }
