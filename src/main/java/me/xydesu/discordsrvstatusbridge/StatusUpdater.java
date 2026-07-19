@@ -569,7 +569,7 @@ public class StatusUpdater {
                 String newId = message.getId();
                 plugin.getConfig().set("message-id", newId);
                 plugin.saveConfig();
-                plugin.getLogger().info("已發送新的狀態訊息並記錄 ID: " + newId);
+                plugin.getLogger().fine("已發送新的狀態訊息並記錄 ID: " + newId);
             };
 
             if (sync) {
@@ -646,7 +646,7 @@ public class StatusUpdater {
     }
 
     private void deleteAndRecreate(Message message, byte[] bytes, MessageEmbed embed, boolean sync, TextChannel channel) {
-        plugin.getLogger().info("目前環境不支援編輯附件（JDA 4），將以「刪除舊訊息並發送新訊息」方式更新圖片...");
+        plugin.getLogger().fine("目前環境不支援編輯附件（JDA 4），將以「刪除舊訊息並發送新訊息」方式更新圖片...");
 
         java.util.function.Consumer<Void> deleteSuccess = v -> {
             sendEmbedWithAttachment(channel, bytes, embed, sync);
