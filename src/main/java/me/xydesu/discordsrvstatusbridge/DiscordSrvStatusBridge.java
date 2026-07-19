@@ -26,6 +26,9 @@ public class DiscordSrvStatusBridge extends JavaPlugin implements Listener {
     public void onEnable() {
         // 儲存預設設定檔
         saveDefaultConfig();
+        
+        // 自動檢查並更新缺失的設定項
+        updateConfig();
 
         maintenanceHook = new MaintenanceHook(this);
         statusUpdater = new StatusUpdater(this, maintenanceHook);
@@ -186,6 +189,40 @@ public class DiscordSrvStatusBridge extends JavaPlugin implements Listener {
 
     public StatusUpdater getStatusUpdater() {
         return statusUpdater;
+    }
+
+    /**
+     * 動態補全缺少的新版本設定項，確保舊版設定檔無縫升級且保留註解
+     */
+    private void updateConfig() {
+        boolean changed = false;
+        org.bukkit.configuration.file.FileConfiguration config = getConfig();
+
+        // v1.0.0 新增: 玩家列表自訂格式
+        if (!config.contains("player-line-template")) {
+            config.set("player-line-template", "- [{name}]({avatar_url})");
+            changed = true;
+        }
+
+        // v1.0.0 新增: 全域描述模板
+        if (!config.contains("description-template")) {
+            config.set("description-template", "");
+            changed = true;
+        }
+
+        // v1.0.0 新增: 玩家名單權重排序
+        if (!config.contains("player-sorting")) {
+            config.set("player-sorting.enabled", true);
+            config.set("player-sorting.weights.group.admin", 100);
+            config.set("player-sorting.weights.group.mod", 50);
+            config.set("player-sorting.weights.group.vip", 10);
+            changed = true;
+        }
+
+        if (changed) {
+            saveConfig();
+            getLogger().info("已自動將缺失的新版本設定項補齊至 config.yml 中！");
+        }
     }
 
     // ==============================================================================
