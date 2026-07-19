@@ -54,6 +54,7 @@ embed-settings:
   # Maintenance status text mapping
   maintenance-true-text: "🛠️ Under Maintenance"
   maintenance-false-text: "✅ Open Normally"
+  maintenance-offline-text: "❌ Offline"
 
   # Replacement text when no players are online
   no-players-text: "*No players currently online*"

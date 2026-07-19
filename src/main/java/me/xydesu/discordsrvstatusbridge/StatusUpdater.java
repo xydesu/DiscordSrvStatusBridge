@@ -223,7 +223,7 @@ public class StatusUpdater {
         // 4. 維護與時間狀態
         String maintenanceStatus = isMaintenance ? mTrue : mFalse;
         if (offlineMode) {
-            maintenanceStatus = "❌ 關閉中";
+            maintenanceStatus = plugin.getConfig().getString("embed-settings.maintenance-offline-text", "❌ Offline");
         }
 
         SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");

@@ -222,6 +222,11 @@ public class DiscordSrvStatusBridge extends JavaPlugin implements Listener {
             changed = true;
         }
 
+        if (!config.contains("embed-settings.maintenance-offline-text")) {
+            config.set("embed-settings.maintenance-offline-text", "❌ Offline");
+            changed = true;
+        }
+
         if (!config.contains("description-template")) {
             config.set("description-template", "");
             changed = true;
