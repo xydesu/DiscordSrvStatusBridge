@@ -18,7 +18,7 @@
 - **頭像拼接大圖**：當有玩家在線上時，自動將玩家頭像（每個 32x32，支援間距）拼接成一張網格大圖並作為附件上傳嵌入至 Discord Embed。最多支援拼接前 30 位玩家，若人數超過，最後一格將自動繪製為「+X」文字方塊，防止因人數過多導致 Discord 訊息長度溢出。
 - **關閉狀態編輯**：在伺服器停用（onDisable）時發送同步請求，將訊息更新為已關閉狀態，並自動清除舊有的大圖附件，確保大圖不會殘留在關閉訊息中。
 - **API 相容性設計**：使用反射調用 JDA API，相容不同版本 DiscordSrv 所內建的 JDA 4 或 JDA 5，減少因相依套件升級導致 plugin 崩潰的機率。
-- **自訂描述與行模板**：支援在設定檔中自訂描述格式，並提供 `player-line-template` 自訂每一位玩家行格式，相容稱號展示。
+- **自訂描述與行模板**：支援在設定檔中自訂描述格式，並提供 `player-line-template` 自訂每一位玩家行格式，相容稱號展示。同時**深度整合 PlaceholderAPI**，支援在狀態描述與玩家行格式中直接代入任意 PAPI 變數（如 %server_ram_used%、%player_ping% 等）。
 
 ---
 
@@ -61,6 +61,12 @@
 | `{uuid}` | 玩家的 UUID |
 | `{avatar_url}` | 玩家的頭像 API 網址 (由設定檔中的 avatar-api-url 生成) |
 | `{display_name}` | 玩家的 DisplayName (通常包含聊天插件所設置的 prefix 稱號/字元) |
+
+### PlaceholderAPI 支援
+
+本插件支援在 `description-template` 與 `player-line-template` 中使用任意 **PlaceholderAPI** 變數（例如 `%server_ram_used%`、`%player_ping%`、`%luckperms_primary_group_name%` 等）：
+- **全域描述變數**：在 `description-template` 中使用時，會優先使用當前第一個線上玩家作為 PAPI 變數的上下文進行替換（若無玩家則以 null 處理）。
+- **玩家專屬變數**：在 `player-line-template` 中使用時，會對每一位玩家代入其對應的玩家上下文進行個人變數替換（例如顯示玩家個人的 ping 值或稱號）。
 
 ---
 

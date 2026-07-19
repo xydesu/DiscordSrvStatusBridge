@@ -238,6 +238,9 @@ public class StatusUpdater {
                         .replace("{uuid}", uuidStr)
                         .replace("{avatar_url}", url)
                         .replace("{display_name}", player.getDisplayName());
+                
+                // 支援 PlaceholderAPI 變數替換
+                playerLine = PlaceholderAPIHook.setPlaceholders(player, playerLine);
                 sb.append(playerLine).append("\n");
             }
             if (total > limit) {
@@ -258,7 +261,7 @@ public class StatusUpdater {
         }
 
         // 開始替換
-        return template
+        String replaced = template
                 .replace("{online}", onlineCount)
                 .replace("{max}", maxCount)
                 .replace("{tps}", tps1m)
@@ -273,6 +276,10 @@ public class StatusUpdater {
                 .replace("{player_names}", playerNames)
                 .replace("{server_version}", serverVersion)
                 .replace("{last_updated}", lastUpdated);
+
+        // 支援 PlaceholderAPI 全域變數替換
+        org.bukkit.OfflinePlayer papiContext = onlinePlayers.isEmpty() ? null : onlinePlayers.get(0);
+        return PlaceholderAPIHook.setPlaceholders(papiContext, replaced);
     }
 
     /**
