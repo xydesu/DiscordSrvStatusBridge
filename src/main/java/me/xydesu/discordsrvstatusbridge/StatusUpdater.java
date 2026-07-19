@@ -121,7 +121,7 @@ public class StatusUpdater {
 
             // 建立狀態 Embed (設定是否附加大圖)
             MessageEmbed embed = buildEmbed(offlineMode, imageBytes != null);
-            String messageId = plugin.getConfig().getString("message-id", "").trim();
+            String messageId = plugin.getDataManager().getMessageId();
 
             if (offlineMode) {
                 // 關機狀態強制以同步方式編輯訊息 (此時無附件)
@@ -601,10 +601,9 @@ public class StatusUpdater {
 
             java.util.function.Consumer<Message> successConsumer = message -> {
                 String newId = message.getId();
-                plugin.getConfig().set("message-id", newId);
-                plugin.saveConfig();
+                plugin.getDataManager().setMessageId(newId);
                 plugin.getLogger().fine(plugin.getMessages().raw("logger.message-sent", "id", newId));
-                isSendingNewMessage = false; // 發送成功，解鎖
+                isSendingNewMessage = false;
             };
 
             java.util.function.Consumer<Throwable> failureConsumer = throwable -> {
@@ -644,8 +643,7 @@ public class StatusUpdater {
 
             java.util.function.Consumer<Throwable> failureConsumer = throwable -> {
                 plugin.getLogger().warning(plugin.getMessages().raw("logger.message-not-found", "id", messageId));
-                plugin.getConfig().set("message-id", "");
-                plugin.saveConfig();
+                plugin.getDataManager().setMessageId("");
             };
 
             if (sync) {
@@ -802,7 +800,7 @@ public class StatusUpdater {
             String selfId = channel.getJDA().getSelfUser().getId();
             
             // 讀取當前設定檔記錄的 ID
-            String currentSavedId = plugin.getConfig().getString("message-id", "").trim();
+            String currentSavedId = plugin.getDataManager().getMessageId();
             
             // 用於保存符合我們特徵的訊息
             List<Message> matchingMessages = new ArrayList<>();
@@ -870,8 +868,7 @@ public class StatusUpdater {
             if (messageToKeep == null) {
                 messageToKeep = matchingMessages.get(0); // 歷史訊息通常是從新到舊排序
                 String newBindId = messageToKeep.getId();
-                plugin.getConfig().set("message-id", newBindId);
-                plugin.saveConfig();
+                plugin.getDataManager().setMessageId(newBindId);
                 plugin.getLogger().info(plugin.getMessages().raw("logger.scan-bound", "id", newBindId));
             }
             

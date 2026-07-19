@@ -20,6 +20,7 @@ public class DiscordSrvStatusBridge extends JavaPlugin implements Listener {
     private BukkitTask updateTask;
     private boolean discordSrvEnabled = false;
     private Messages messages;
+    private DataManager dataManager;
 
     private BukkitTask immediateUpdateTask = null;
 
@@ -29,6 +30,10 @@ public class DiscordSrvStatusBridge extends JavaPlugin implements Listener {
         updateConfig();
 
         messages = new Messages(this);
+        dataManager = new DataManager(this);
+
+        // 啟動時若 config.yml 仍有舊的 message-id，自動遷移至 data.yml 並清除 config 中的殘留項
+        migrateMessageIdFromConfig();
 
         maintenanceHook = new MaintenanceHook(this);
         statusUpdater = new StatusUpdater(this, maintenanceHook);
@@ -186,6 +191,23 @@ public class DiscordSrvStatusBridge extends JavaPlugin implements Listener {
 
     public Messages getMessages() {
         return messages;
+    }
+
+    public DataManager getDataManager() {
+        return dataManager;
+    }
+
+    /**
+     * Migrates message-id from config.yml to data.yml on first startup after upgrade.
+     */
+    private void migrateMessageIdFromConfig() {
+        String oldId = getConfig().getString("message-id", "").trim();
+        if (!oldId.isEmpty()) {
+            dataManager.setMessageId(oldId);
+            getConfig().set("message-id", null);
+            saveConfig();
+            getLogger().info("Migrated message-id from config.yml to data.yml.");
+        }
     }
 
     /**

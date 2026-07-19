@@ -6,8 +6,6 @@
 # Target Discord channel ID
 channel-id: ""
 
-# Status message ID (The plugin will automatically write this after sending the message, do not modify manually)
-message-id: ""
 
 # Status update interval (Unit: seconds, recommended not lower than 10 seconds to avoid Discord API rate limits)
 update-interval-seconds: 30
@@ -82,11 +80,12 @@ embed-settings:
     **Server IP**: `play.yourserver.com`
     **Server Version**: `{server_version}`
     **System Status**: {maintenance_status}
-    
+
     **Online**: `{online} / {max}`
     **System Performance**: `{tps} TPS` *(1m: {tps_1m} | 5m: {tps_5m} | 15m: {tps_15m})*
     **Memory Usage**: `{ram_used} MB / {ram_max} MB` *(Free: {ram_free} MB)*
-    
-    **Online Players**: (Avatars shown below)
-    
+
+    **Online Players**:
+    {player_list}
+
     *Last Updated: {last_updated}*
