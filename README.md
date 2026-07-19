@@ -96,17 +96,23 @@ maintenance-integration: true
 avatar-api-url: "https://minotar.net/helm/{uuid}/32.png"
 
 # 線上玩家清單 ({player_list}) 中，每一位玩家的顯示格式模板
+# 支援的 Placeholder：
+# - {name} : 玩家的遊戲名稱 (例如 xydesu)
+# - {uuid} : 玩家的 UUID
+# - {avatar_url} : 玩家的頭像 API 網址 (由上方的 avatar-api-url 生成)
+# - {display_name} : 玩家的 DisplayName (通常包含聊天插件所設置的 prefix 稱號/字元)
 player-line-template: "- [{name}]({avatar_url})"
 
+
 # 玩家名單排序設定
-# 根據權限節點 (例如 LuckPerms 的 group.admin) 賦予權重。
-# 格式為 "權限節點:權重"。權重數字越大的玩家將會排在名單的越前面。若無匹配權限則權重為 0。
 player-sorting:
   enabled: true
-  weights:
-    - "group.admin:100"
-    - "group.mod:50"
-    - "group.vip:10"
+  # 根據權限節點 (例如 LuckPerms 的 group.admin) 賦予權重。
+  # 寫在清單越「上方」的權限，代表在名單中擁有的優先級越高。
+  permission-priority-list:
+    - "group.admin"
+    - "group.mod"
+    - "group.vip"
 
 # 狀態訊息內容與外觀設定
 embed-settings:
@@ -129,6 +135,23 @@ embed-settings:
   no-players-text: "*目前沒有玩家在線上*"
 
   # 狀態訊息的描述 (Description) 內容，支援 Placeholder 替換。
+  # 說明：伺服器 IP 等靜態內容請直接在模板中填寫即可。
+  #
+  # 支援的動態 Placeholders：
+  # {online}             - 線上玩家人數
+  # {max}                - 伺服器最大人數
+  # {tps}                - 當前 1 分鐘平均 TPS (格式化為 ##.##)
+  # {tps_1m}             - 1 分鐘平均 TPS
+  # {tps_5m}             - 5 分鐘平均 TPS
+  # {tps_15m}            - 15 分鐘平均 TPS
+  # {ram_used}           - 已使用記憶體 (MB)
+  # {ram_max}            - 最大分配記憶體 (MB)
+  # {ram_free}           - 剩餘可用記憶體 (MB)
+  # {maintenance_status} - 維護狀態字串 (🛠️ 維護中 / ✅ 正常開放)
+  # {player_list}        - 玩家頭像超連結列表 (Markdown 格式)
+  # {player_names}       - 線上玩家純文字清單 (以逗號分隔，例如: xydesu, Player1)
+  # {server_version}     - 伺服器核心版本
+  # {last_updated}       - 上次更新時間 (格式: yyyy-MM-dd HH:mm:ss)
   description-template: |
     **伺服器位址**: `play.yourserver.com`
     **伺服器版本**: `{server_version}`
@@ -138,10 +161,10 @@ embed-settings:
     **系統效能**: `{tps} TPS` *(1m: {tps_1m} | 5m: {tps_5m} | 15m: {tps_15m})*
     **記憶體使用**: `{ram_used} MB / {ram_max} MB` *(剩餘 {ram_free} MB)*
     
-    **線上玩家**:
-    {player_list}
+    **線上玩家**: (頭像如下圖所示)
     
     *最後更新時間: {last_updated}*
+
 ```
 
 ---
