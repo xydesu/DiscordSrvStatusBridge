@@ -11,11 +11,14 @@
 ## 核心功能
 
 - **系統狀態監控**：取得伺服器 TPS（1分鐘、5分鐘、15分鐘平均值）以及系統記憶體（RAM）使用狀況。
-- **維護狀態整合**：支援與 Maintenance 插件對接，當伺服器開啟維護模式時，狀態訊息會切換為對應的標題與顏色。
+- **維護狀態整合**：支援與 Maintenance 插件對接，當伺服器開啟維護模式時，狀態訊息會切換為對應的標題與顏色，並支援維護模式變更事件的即時狀態同步。
+- **隱身插件相容 (Vanish)**：完美支援 SuperVanish, PremiumVanish, CMI 以及 EssentialsX Vanish。當管理員處於隱身狀態時，將自動從 Discord 線上人數、玩家清單、純文字名稱及頭像大圖中抹除，確保隱私。
+- **基岩版玩家支援 (Geyser/Floodgate)**：自動偵測 Geyser/Floodgate 基岩版玩家，並反射取得其 XUID，優先由 Geyser 官方 API 取得 Xbox 頭像，並具備前綴字元過濾機制防範頭像下載錯誤。
+- **大中型伺服器截斷防護**：設有前 15 名玩家截斷限制，大於 15 人時 Markdown 清單將自動以 `...以及其他 X 位玩家` 截斷，防範 Embed 描述文字過長。
 - **頭像拼接大圖**：當有玩家在線上時，自動將玩家頭像（每個 32x32，支援間距）拼接成一張網格大圖並作為附件上傳嵌入至 Discord Embed。最多支援拼接前 30 位玩家，若人數超過，最後一格將自動繪製為「+X」文字方塊，防止因人數過多導致 Discord 訊息長度溢出。
-- **關閉狀態編輯**：在伺服器停用（onDisable）時發送同步請求，將訊息更新為已關閉狀態，防止顯示錯誤的運作資訊。
+- **關閉狀態編輯**：在伺服器停用（onDisable）時發送同步請求，將訊息更新為已關閉狀態，並自動清除舊有的大圖附件，確保大圖不會殘留在關閉訊息中。
 - **API 相容性設計**：使用反射調用 JDA API，相容不同版本 DiscordSrv 所內建的 JDA 4 或 JDA 5，減少因相依套件升級導致 plugin 崩潰的機率。
-- **自訂描述模板**：支援在設定檔中自訂描述格式，並提供多種預留位置進行動態替換。
+- **自訂描述與行模板**：支援在設定檔中自訂描述格式，並提供 `player-line-template` 自訂每一位玩家行格式，相容稱號展示。
 
 ---
 
@@ -31,11 +34,11 @@
 
 ## 支援的預留位置 (Placeholders)
 
-可在描述模板中使用的動態變數如下：
+### 狀態描述模板變數 (description-template)
 
 | 預留位置 | 說明 |
 | :--- | :--- |
-| `{online}` | 當前線上玩家人數 |
+| `{online}` | 當前線上玩家人數 (自動排除隱身玩家) |
 | `{max}` | 伺服器最大容納人數 |
 | `{tps}` | 當前 1 分鐘平均 TPS (格式化為 ##.##) |
 | `{tps_1m}` | 1 分鐘平均 TPS |
@@ -45,10 +48,19 @@
 | `{ram_max}` | 最大分配記憶體 (MB) |
 | `{ram_free}` | 剩餘可用記憶體 (MB) |
 | `{maintenance_status}` | 維護狀態文字 (依設定檔設定顯示) |
-| `{player_list}` | 線上玩家頭像超連結列表 (Markdown 格式) |
-| `{player_names}` | 線上玩家純文字清單 (以逗號分隔) |
+| `{player_list}` | 線上玩家頭像超連結列表 (支援行模板，設有前 15 名玩家截斷) |
+| `{player_names}` | 線上玩家純文字清單 (以逗號分隔，排除隱身玩家) |
 | `{server_version}` | 伺服器核心版本 |
 | `{last_updated}` | 上次更新時間 (格式: yyyy-MM-dd HH:mm:ss) |
+
+### 玩家清單行模板變數 (player-line-template)
+
+| 預留位置 | 說明 |
+| :--- | :--- |
+| `{name}` | 玩家的遊戲名稱 (例如 xydesu) |
+| `{uuid}` | 玩家的 UUID |
+| `{avatar_url}` | 玩家的頭像 API 網址 (由設定檔中的 avatar-api-url 生成) |
+| `{display_name}` | 玩家的 DisplayName (通常包含聊天插件所設置的 prefix 稱號/字元) |
 
 ---
 
@@ -73,6 +85,9 @@ update-interval-seconds: 30
 maintenance-integration: true
 
 # 玩家頭像 API 網址。支援將 {uuid} 或 {name} 替換為玩家對應的 UUID 或名稱
+# 常用 API：
+# - Minotar (帶頭盔): https://minotar.net/helm/{uuid}/32.png
+# - Minotar (無頭盔): https://minotar.net/avatar/{uuid}/32.png
 avatar-api-url: "https://minotar.net/helm/{uuid}/32.png"
 
 # 線上玩家清單 ({player_list}) 中，每一位玩家的顯示格式模板
@@ -114,6 +129,8 @@ embed-settings:
     
     *最後更新時間: {last_updated}*
 ```
+
+---
 
 ## 管理指令與權限
 
