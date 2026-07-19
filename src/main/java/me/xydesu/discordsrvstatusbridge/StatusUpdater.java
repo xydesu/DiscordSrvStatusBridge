@@ -26,8 +26,7 @@ import java.util.stream.Collectors;
 
 /**
  * 處理 Discord 伺服器狀態訊息的建構、發送、編輯與 Placeholders 替換。
- * 支援動態下載玩家頭像並在記憶體中快取，並將多位玩家的頭像拼接為單張圖片發送。
- * 支援 JDA 4 與 JDA 5 的反射相容性設計。
+ * 專為 JDA 4 設計，支援動態下載玩家頭像並在記憶體中快取，並將多位玩家的頭像拼接為單張圖片發送。
  *
  * 作者: xydesu
  */
@@ -37,9 +36,6 @@ public class StatusUpdater {
     private final MaintenanceHook maintenanceHook;
     private boolean isUpdating = false;
 
-    // 偵測 JDA 版本 (JDA 5 引入了 MessageCreateBuilder)
-    private boolean isJda5 = false;
-
     // 頭像快取
     private final Map<UUID, BufferedImage> avatarCache = new ConcurrentHashMap<>();
     private BufferedImage defaultAvatar = null;
@@ -47,16 +43,6 @@ public class StatusUpdater {
     public StatusUpdater(DiscordSrvStatusBridge plugin, MaintenanceHook maintenanceHook) {
         this.plugin = plugin;
         this.maintenanceHook = maintenanceHook;
-
-        // 在實例化時動態偵測 JDA 版本，確保 DiscordUtil 的 ClassLoader 已就緒
-        try {
-            getJdaClass("github.scarsz.discordsrv.dependencies.jda.api.utils.messages.MessageCreateBuilder");
-            this.isJda5 = true;
-            plugin.getLogger().info("已偵測並啟用 JDA 5 狀態更新引擎。");
-        } catch (Throwable e) {
-            this.isJda5 = false;
-            plugin.getLogger().info("已偵測並啟用 JDA 4 狀態更新引擎。原因/異常: " + e.toString());
-        }
     }
 
     /**
@@ -497,21 +483,8 @@ public class StatusUpdater {
     }
 
     // ==============================================================================
-    // 以下為 JDA 4 與 JDA 5 反射相容的發送與編輯大圖附件邏輯
+    // 以下為 JDA 4 反射相容的發送與編輯大圖附件邏輯 (不含 JDA 5 冗餘分支)
     // ==============================================================================
-
-    /**
-     * 反射建立 JDA 5 的 FileUpload 實體。若是 JDA 4 環境則回傳 null。
-     */
-    private Object createFileUpload(byte[] bytes, String name) {
-        try {
-            Class<?> clazz = getJdaClass("github.scarsz.discordsrv.dependencies.jda.api.utils.FileUpload");
-            Method method = clazz.getMethod("fromData", byte[].class, String.class);
-            return method.invoke(null, bytes, name);
-        } catch (Exception e) {
-            return null; // JDA 4
-        }
-    }
 
     /**
      * 發送帶有附件的狀態訊息，並將訊息 ID 回寫設定檔。
@@ -519,45 +492,16 @@ public class StatusUpdater {
     private void sendEmbedWithAttachment(TextChannel channel, byte[] bytes, MessageEmbed embed, boolean sync) {
         try {
             Object action;
-            if (isJda5) {
-                // JDA 5 核心發送機制：使用 MessageCreateBuilder 搭配 MessageCreateData
-                Object builder = getJdaClass("github.scarsz.discordsrv.dependencies.jda.api.utils.messages.MessageCreateBuilder").getConstructor().newInstance();
+            if (bytes != null) {
+                // JDA 4 TEXT CHANNEL sendFile 必須包含 AttachmentOption... 變長參數
+                Class<?> optionClass = getJdaClass("github.scarsz.discordsrv.dependencies.jda.api.utils.AttachmentOption");
+                Object optionArray = java.lang.reflect.Array.newInstance(optionClass, 0); // 傳入空陣列
                 
-                // setEmbeds(MessageEmbed...)
-                Method setEmbedsMethod = builder.getClass().getMethod("setEmbeds", MessageEmbed[].class);
-                builder = setEmbedsMethod.invoke(builder, (Object) new MessageEmbed[]{embed});
-                
-                // setFiles(FileUpload...)
-                if (bytes != null) {
-                    Object fileUpload = createFileUpload(bytes, "players.png");
-                    if (fileUpload != null) {
-                        Object[] fileArray = (Object[]) java.lang.reflect.Array.newInstance(fileUpload.getClass(), 1);
-                        fileArray[0] = fileUpload;
-                        Method setFilesMethod = builder.getClass().getMethod("setFiles", fileArray.getClass());
-                        builder = setFilesMethod.invoke(builder, (Object) fileArray);
-                    }
-                }
-                
-                // build()
-                Object createData = builder.getClass().getMethod("build").invoke(builder);
-                
-                // sendMessage(MessageCreateData)
-                Class<?> createDataClass = getJdaClass("github.scarsz.discordsrv.dependencies.jda.api.utils.messages.MessageCreateData");
-                Method sendMessageMethod = channel.getClass().getMethod("sendMessage", createDataClass);
-                action = sendMessageMethod.invoke(channel, createData);
+                Method sendFileMethod = channel.getClass().getMethod("sendFile", byte[].class, String.class, optionArray.getClass());
+                Object act = sendFileMethod.invoke(channel, bytes, "players.png", optionArray);
+                action = act.getClass().getMethod("embed", MessageEmbed.class).invoke(act, embed);
             } else {
-                // JDA 4 核心發送機制
-                if (bytes != null) {
-                    // JDA 4 TEXT CHANNEL sendFile 必須包含 AttachmentOption... 變長參數
-                    Class<?> optionClass = getJdaClass("github.scarsz.discordsrv.dependencies.jda.api.utils.AttachmentOption");
-                    Object optionArray = java.lang.reflect.Array.newInstance(optionClass, 0); // 傳入空陣列
-                    
-                    Method sendFileMethod = channel.getClass().getMethod("sendFile", byte[].class, String.class, optionArray.getClass());
-                    Object act = sendFileMethod.invoke(channel, bytes, "players.png", optionArray);
-                    action = act.getClass().getMethod("embed", MessageEmbed.class).invoke(act, embed);
-                } else {
-                    action = channel.getClass().getMethod("sendMessage", MessageEmbed.class).invoke(channel, embed);
-                }
+                action = channel.getClass().getMethod("sendMessage", MessageEmbed.class).invoke(channel, embed);
             }
 
             java.util.function.Consumer<Message> successConsumer = message -> {
@@ -616,79 +560,48 @@ public class StatusUpdater {
     }
 
     /**
-     * 執行帶有附件的訊息編輯反射動作。遇到 JDA 4 無法修改附件時會回退為「刪除舊訊息重新發送」。
+     * 執行帶有附件的訊息編輯反射動作。JDA 4 無法修改附件時會回退為「刪除舊訊息重新發送」。
      */
     private void performEditWithAttachment(Message message, byte[] bytes, MessageEmbed embed, boolean sync, TextChannel channel) {
         try {
-            if (isJda5) {
-                // JDA 5 核心編輯機制：使用 MessageEditBuilder 與 MessageEditData
-                Object builder = getJdaClass("github.scarsz.discordsrv.dependencies.jda.api.utils.messages.MessageEditBuilder").getConstructor().newInstance();
-                
-                // setEmbeds(MessageEmbed...)
-                Method setEmbedsMethod = builder.getClass().getMethod("setEmbeds", MessageEmbed[].class);
-                builder = setEmbedsMethod.invoke(builder, (Object) new MessageEmbed[]{embed});
-                
-                // setFiles(FileUpload...)
-                if (bytes != null) {
-                    Object fileUpload = createFileUpload(bytes, "players.png");
-                    if (fileUpload != null) {
-                        Object[] fileArray = (Object[]) java.lang.reflect.Array.newInstance(fileUpload.getClass(), 1);
-                        fileArray[0] = fileUpload;
-                        Method setFilesMethod = builder.getClass().getMethod("setFiles", fileArray.getClass());
-                        builder = setFilesMethod.invoke(builder, (Object) fileArray);
-                    }
-                }
-                
-                // build()
-                Object editData = builder.getClass().getMethod("build").invoke(builder);
-                
-                // editMessage(MessageEditData)
-                Class<?> editDataClass = getJdaClass("github.scarsz.discordsrv.dependencies.jda.api.utils.messages.MessageEditData");
-                Method editMessageMethod = message.getClass().getMethod("editMessage", editDataClass);
-                Object action = editMessageMethod.invoke(message, editData);
-                
-                if (sync) {
-                    action.getClass().getMethod("complete").invoke(action);
-                } else {
-                    action.getClass().getMethod("queue").invoke(action);
-                }
+            if (bytes != null) {
+                // JDA 4 不支援編輯時更換/上傳附件，手動拋出以進入 JDA 4 回退刪除重建機制
+                throw new NoSuchMethodException("JDA 4 不支援編輯附件");
             } else {
-                // JDA 4 核心編輯機制
-                if (bytes != null) {
-                    // JDA 4 不支援編輯時更換/上傳附件，手動拋出以進入 JDA 4 回退刪除重建機制
-                    throw new NoSuchMethodException("JDA 4 不支援編輯附件");
+                // 無附件的編輯，直接更新 Embed 內容即可
+                Object editAction = message.getClass().getMethod("editMessage", MessageEmbed.class).invoke(message, embed);
+                if (sync) {
+                    editAction.getClass().getMethod("complete").invoke(editAction);
                 } else {
-                    // 無附件的編輯，直接更新 Embed 內容即可
-                    Object editAction = message.getClass().getMethod("editMessage", MessageEmbed.class).invoke(message, embed);
-                    if (sync) {
-                        editAction.getClass().getMethod("complete").invoke(editAction);
-                    } else {
-                        editAction.getClass().getMethod("queue").invoke(editAction);
-                    }
+                    editAction.getClass().getMethod("queue").invoke(editAction);
                 }
             }
         } catch (NoSuchMethodException e) {
             // JDA 4 附件更新回退方案：刪除舊訊息並發送新訊息
-            plugin.getLogger().info("目前環境不支援編輯附件（可能是 JDA 4），將以「刪除舊訊息並發送新訊息」方式更新圖片...");
-
-            java.util.function.Consumer<Void> deleteSuccess = v -> {
-                sendEmbedWithAttachment(channel, bytes, embed, sync);
-            };
-
-            try {
-                Object deleteAction = message.getClass().getMethod("delete").invoke(message);
-                if (sync) {
-                    deleteAction.getClass().getMethod("complete").invoke(deleteAction);
-                    deleteSuccess.accept(null);
-                } else {
-                    deleteAction.getClass().getMethod("queue", java.util.function.Consumer.class).invoke(deleteAction, deleteSuccess);
-                }
-            } catch (Exception ex) {
-                // 刪除失敗時直接發送新訊息
-                sendEmbedWithAttachment(channel, bytes, embed, sync);
-            }
+            deleteAndRecreate(message, bytes, embed, sync, channel);
         } catch (Exception e) {
-            plugin.getLogger().log(Level.SEVERE, "執行帶有附件的 Discord 編輯失敗: " + e.getMessage(), e);
+            plugin.getLogger().log(Level.SEVERE, "執行 Discord 編輯失敗: " + e.getMessage(), e);
+        }
+    }
+
+    private void deleteAndRecreate(Message message, byte[] bytes, MessageEmbed embed, boolean sync, TextChannel channel) {
+        plugin.getLogger().info("目前環境不支援編輯附件（JDA 4），將以「刪除舊訊息並發送新訊息」方式更新圖片...");
+
+        java.util.function.Consumer<Void> deleteSuccess = v -> {
+            sendEmbedWithAttachment(channel, bytes, embed, sync);
+        };
+
+        try {
+            Object deleteAction = message.getClass().getMethod("delete").invoke(message);
+            if (sync) {
+                deleteAction.getClass().getMethod("complete").invoke(deleteAction);
+                deleteSuccess.accept(null);
+            } else {
+                deleteAction.getClass().getMethod("queue", java.util.function.Consumer.class).invoke(deleteAction, deleteSuccess);
+            }
+        } catch (Exception ex) {
+            // 刪除失敗時直接發送新訊息
+            sendEmbedWithAttachment(channel, bytes, embed, sync);
         }
     }
 
