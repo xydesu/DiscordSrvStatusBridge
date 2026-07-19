@@ -2,6 +2,12 @@
 
 一個用於在 Discord 頻道顯示 Minecraft 伺服器運作狀態的 DiscordSrv 附加組件。
 
+## 下載
+
+您可以直接在 [GitHub Releases](https://github.com/xydesu/DiscordSrvStatusBridge/releases) 頁面下載最新編譯好的 `.jar` 檔案，無需手動進行編譯。
+
+---
+
 ## 核心功能
 
 - **系統狀態監控**：取得伺服器 TPS（1分鐘、5分鐘、15分鐘平均值）以及系統記憶體（RAM）使用狀況。
@@ -15,7 +21,7 @@
 
 ## 安裝與設定步驟
 
-1. 將編譯完成的 `discordsrv-status-bridge-1.0.0-SNAPSHOT.jar` 放入伺服器的 `plugins` 資料夾中。
+1. 前往 [Releases](https://github.com/xydesu/DiscordSrvStatusBridge/releases) 頁面下載最新版本的 `.jar` 檔案，並放入伺服器的 `plugins` 資料夾中。
 2. 啟動伺服器以生成預設設定檔。
 3. 編輯 `plugins/DiscordSrvStatusBridge/config.yml`，在 `channel-id` 欄位中填入目標 Discord 頻道 ID。
 4. 重新載入或重啟伺服器以套用變更。
