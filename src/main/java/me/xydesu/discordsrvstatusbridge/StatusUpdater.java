@@ -165,7 +165,8 @@ public class StatusUpdater {
         }
 
         // 1. 人數與版本
-        String onlineCount = offlineMode ? "0" : String.valueOf(Bukkit.getOnlinePlayers().size());
+        List<Player> onlinePlayers = getVisiblePlayers();
+        String onlineCount = offlineMode ? "0" : String.valueOf(onlinePlayers.size());
         String maxCount = String.valueOf(Bukkit.getMaxPlayers());
         String serverVersion = Bukkit.getServer().getVersion();
 
@@ -201,7 +202,6 @@ public class StatusUpdater {
         String lastUpdated = sdf.format(new Date());
 
         // 5. 玩家清單與純文字清單 (設有前 15 名玩家截斷防護)
-        Collection<? extends Player> onlinePlayers = Bukkit.getOnlinePlayers();
         String avatarApiUrl = plugin.getConfig().getString("avatar-api-url", "https://minotar.net/helm/{uuid}/32.png");
 
         String playerList;
@@ -267,7 +267,7 @@ public class StatusUpdater {
      * @return 圖片的 byte 陣列，若無玩家則回傳 null
      */
     private byte[] generatePlayersImage() {
-        Collection<? extends Player> onlinePlayers = Bukkit.getOnlinePlayers();
+        List<Player> onlinePlayers = getVisiblePlayers();
         if (onlinePlayers.isEmpty()) {
             return null;
         }
@@ -677,5 +677,15 @@ public class StatusUpdater {
         } catch (Exception e) {
             plugin.getLogger().log(Level.WARNING, "同步編輯 Discord 關機訊息失敗: " + e.getMessage());
         }
+    }
+
+    private List<Player> getVisiblePlayers() {
+        List<Player> visible = new ArrayList<>();
+        for (Player player : Bukkit.getOnlinePlayers()) {
+            if (!VanishHook.isVanished(player)) {
+                visible.add(player);
+            }
+        }
+        return visible;
     }
 }
