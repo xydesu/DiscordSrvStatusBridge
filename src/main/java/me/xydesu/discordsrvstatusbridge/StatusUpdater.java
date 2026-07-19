@@ -733,6 +733,29 @@ public class StatusUpdater {
         }
     }
 
+    /**
+     * 取得玩家在名單中的排序權重
+     */
+    private int getPlayerWeight(Player player) {
+        if (!plugin.getConfig().getBoolean("player-sorting.enabled", false)) {
+            return 0;
+        }
+
+        org.bukkit.configuration.ConfigurationSection weights = plugin.getConfig().getConfigurationSection("player-sorting.weights");
+        if (weights == null) return 0;
+
+        int maxWeight = 0;
+        for (String perm : weights.getKeys(false)) {
+            if (player.hasPermission(perm)) {
+                int w = weights.getInt(perm, 0);
+                if (w > maxWeight) {
+                    maxWeight = w;
+                }
+            }
+        }
+        return maxWeight;
+    }
+
     private List<Player> getVisiblePlayers() {
         List<Player> visible = new ArrayList<>();
         for (Player player : Bukkit.getOnlinePlayers()) {
@@ -740,6 +763,17 @@ public class StatusUpdater {
                 visible.add(player);
             }
         }
+
+        // 依照玩家權重排序 (由大到小)；權重相同則以名稱字母排序 (A-Z)
+        visible.sort((p1, p2) -> {
+            int w1 = getPlayerWeight(p1);
+            int w2 = getPlayerWeight(p2);
+            if (w1 != w2) {
+                return Integer.compare(w2, w1);
+            }
+            return p1.getName().compareToIgnoreCase(p2.getName());
+        });
+
         return visible;
     }
 
