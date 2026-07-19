@@ -52,6 +52,11 @@ public class DiscordSrvStatusBridge extends JavaPlugin implements Listener {
         } else {
             getLogger().warning("未偵測到啟用的 DiscordSRV 插件。將在 DiscordSrv 載入後才執行監控。");
         }
+
+        // 註冊管理指令
+        BridgeCommand cmd = new BridgeCommand(this);
+        getCommand("discordsrvstatusbridge").setExecutor(cmd);
+        getCommand("discordsrvstatusbridge").setTabCompleter(cmd);
     }
 
     @Override
@@ -134,6 +139,10 @@ public class DiscordSrvStatusBridge extends JavaPlugin implements Listener {
             statusUpdater.updateStatus(false, false);
             immediateUpdateTask = null;
         }, 20L); // 延遲 1 秒合併更新
+    }
+
+    public StatusUpdater getStatusUpdater() {
+        return statusUpdater;
     }
 
     // ==============================================================================

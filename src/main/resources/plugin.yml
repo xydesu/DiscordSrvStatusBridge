@@ -5,3 +5,15 @@ api-version: '1.21'
 author: xydesu
 description: DiscordSrv Addon that displays server status (player count, tps, maintenance, etc.) in a dedicated channel.
 softdepend: [DiscordSRV, Maintenance, floodgate]
+
+commands:
+  discordsrvstatusbridge:
+    description: DiscordSrvStatusBridge 管理指令
+    aliases: [dssb]
+    permission: discordsrvstatusbridge.admin
+    permission-message: "§c你沒有權限執行此指令！"
+
+permissions:
+  discordsrvstatusbridge.admin:
+    description: 允許使用 DiscordSrvStatusBridge 管理指令的權限
+    default: op

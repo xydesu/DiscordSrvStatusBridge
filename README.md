@@ -112,6 +112,15 @@ embed-settings:
     *最後更新時間: {last_updated}*
 ```
 
+## 管理指令與權限
+
+本插件提供以下管理指令以方便在遊戲中或控制台直接進行控制（主指令為 `/discordsrvstatusbridge`，可使用縮寫 `/dssb`）：
+
+| 指令 | 說明 | 權限 |
+| :--- | :--- | :--- |
+| `/dssb reload` | 重新載入 `config.yml` 設定檔並立即套用更新 | `discordsrvstatusbridge.admin` (預設 OP 擁有) |
+| `/dssb update` | 強制立即對 Discord 狀態訊息進行一次更新 | `discordsrvstatusbridge.admin` (預設 OP 擁有) |
+
 ---
 
 ## 本地編譯指南
