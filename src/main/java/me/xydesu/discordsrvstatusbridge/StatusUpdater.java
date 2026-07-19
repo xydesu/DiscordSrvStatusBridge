@@ -35,6 +35,7 @@ public class StatusUpdater {
     private final DiscordSrvStatusBridge plugin;
     private final MaintenanceHook maintenanceHook;
     private boolean isUpdating = false;
+    private boolean firstUpdate = true;
 
     // 頭像快取
     private final Map<UUID, BufferedImage> avatarCache = new ConcurrentHashMap<>();
@@ -92,6 +93,11 @@ public class StatusUpdater {
                 plugin.getLogger().warning("找不到指定 ID 的 Discord 頻道: " + channelId);
                 isUpdating = false;
                 return;
+            }
+
+            if (firstUpdate && !offlineMode) {
+                firstUpdate = false;
+                detectAndCleanDuplicateMessages(channel);
             }
 
             // 生成拼接頭像圖片 (若離線或無玩家則為 null)
@@ -695,5 +701,122 @@ public class StatusUpdater {
             }
         }
         return visible;
+    }
+
+    /**
+     * 偵測並清理頻道中的重複舊狀態訊息。
+     * 若發現舊有狀態訊息但設定檔中無記錄，則自動綁定；若有多條，則保留一條並刪除其餘重複項。
+     */
+    private void detectAndCleanDuplicateMessages(TextChannel channel) {
+        try {
+            plugin.getLogger().info("正在掃描頻道中的歷史狀態訊息以防止重複發送...");
+            
+            // 1. 獲取 MessageHistory
+            Object historyObj = channel.getClass().getMethod("getHistory").invoke(channel);
+            // 2. 呼叫 retrievePast(50)
+            Object retrieveAction = historyObj.getClass().getMethod("retrievePast", int.class).invoke(historyObj, 50);
+            // 3. 執行 complete()
+            Object messagesListObj = retrieveAction.getClass().getMethod("complete").invoke(retrieveAction);
+            
+            if (!(messagesListObj instanceof List)) {
+                return;
+            }
+            
+            List<?> messages = (List<?>) messagesListObj;
+            String selfId = channel.getJDA().getSelfUser().getId();
+            
+            // 讀取當前設定檔記錄的 ID
+            String currentSavedId = plugin.getConfig().getString("message-id", "").trim();
+            
+            // 用於保存符合我們特徵的訊息
+            List<Message> matchingMessages = new ArrayList<>();
+            
+            // 讀取設定檔中的 Title 特徵
+            String onlineTitle = plugin.getConfig().getString("embed-settings.status-online.title", "伺服器運作中");
+            String maintenanceTitle = plugin.getConfig().getString("embed-settings.status-maintenance.title", "伺服器維護中");
+            String offlineTitle = plugin.getConfig().getString("embed-settings.status-offline.title", "伺服器已關閉");
+            
+            for (Object msgObj : messages) {
+                if (!(msgObj instanceof Message)) {
+                    continue;
+                }
+                Message msg = (Message) msgObj;
+                
+                // 必須是 Bot 自己發送的
+                if (!msg.getAuthor().getId().equals(selfId)) {
+                    continue;
+                }
+                
+                // 檢查是否符合我們的狀態訊息 Embed 特徵
+                List<MessageEmbed> embeds = msg.getEmbeds();
+                if (embeds == null || embeds.isEmpty()) {
+                    continue;
+                }
+                
+                MessageEmbed embed = embeds.get(0);
+                String title = embed.getTitle();
+                String desc = embed.getDescription();
+                
+                if (title == null) {
+                    continue;
+                }
+                
+                // 只要 Title 包含設定檔中定義的運作中、維護中、或關閉中標題，即判定為本插件的狀態訊息
+                boolean matchesTitle = title.contains(onlineTitle) || title.contains(maintenanceTitle) || title.contains(offlineTitle);
+                boolean matchesDesc = desc != null && (desc.contains("線上人數") || desc.contains("系統效能") || desc.contains("最後更新時間"));
+                
+                if (matchesTitle || matchesDesc) {
+                    matchingMessages.add(msg);
+                }
+            }
+            
+            if (matchingMessages.isEmpty()) {
+                plugin.getLogger().info("掃描完成：未發現任何舊有狀態訊息。");
+                return;
+            }
+            
+            plugin.getLogger().info("掃描完成：發現 " + matchingMessages.size() + " 條舊狀態訊息。");
+            
+            Message messageToKeep = null;
+            
+            // 1. 如果當前有儲存的 ID，且該 ID 還存在於匹配列表中，則保留它
+            if (!currentSavedId.isEmpty()) {
+                for (Message msg : matchingMessages) {
+                    if (msg.getId().equals(currentSavedId)) {
+                        messageToKeep = msg;
+                        break;
+                    }
+                }
+            }
+            
+            // 2. 如果沒有儲存的 ID，或者儲存的 ID 沒在列表中，則選擇最新的一條作為保留對象並綁定之
+            if (messageToKeep == null) {
+                messageToKeep = matchingMessages.get(0); // 歷史訊息通常是從新到舊排序
+                String newBindId = messageToKeep.getId();
+                plugin.getConfig().set("message-id", newBindId);
+                plugin.saveConfig();
+                plugin.getLogger().info("已自動對接並綁定偵測到的最新狀態訊息 ID: " + newBindId);
+            }
+            
+            // 3. 將其餘所有重複的狀態訊息通通刪除
+            int deletedCount = 0;
+            for (Message msg : matchingMessages) {
+                if (msg.getId().equals(messageToKeep.getId())) {
+                    continue;
+                }
+                try {
+                    Object deleteAction = msg.getClass().getMethod("delete").invoke(msg);
+                    deleteAction.getClass().getMethod("complete").invoke(deleteAction);
+                    deletedCount++;
+                } catch (Exception ignored) {}
+            }
+            
+            if (deletedCount > 0) {
+                plugin.getLogger().info("已成功清理 " + deletedCount + " 條重複的舊狀態訊息。");
+            }
+            
+        } catch (Exception e) {
+            plugin.getLogger().log(Level.WARNING, "執行重複訊息偵測與清理時發生異常: " + e.getMessage());
+        }
     }
 }
