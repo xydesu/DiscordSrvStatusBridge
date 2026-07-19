@@ -400,42 +400,65 @@ public class StatusUpdater {
         Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
             try {
                 String avatarUrlTemplate = plugin.getConfig().getString("avatar-api-url", "https://crafatar.com/avatars/{uuid}?size=32&overlay");
-                String urlStr = avatarUrlTemplate
-                        .replace("{uuid}", uuid.toString())
-                        .replace("{name}", name);
+                
+                String urlStr;
+                // 離線模式 UUID (version == 3) 回退至 Minotar 以名單獲取頭像
+                if (uuid.version() == 3 && avatarUrlTemplate.contains("{uuid}")) {
+                    urlStr = "https://minotar.net/avatar/" + name + "/32.png";
+                } else {
+                    urlStr = avatarUrlTemplate
+                            .replace("{uuid}", uuid.toString())
+                            .replace("{name}", name);
+                }
 
-                URL url = new URL(urlStr);
-                HttpURLConnection conn = (HttpURLConnection) url.openConnection();
-                conn.setRequestMethod("GET");
-                conn.setConnectTimeout(5000);
-                conn.setReadTimeout(5000);
-                conn.setRequestProperty("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64)");
+                BufferedImage img = downloadImage(urlStr);
+                
+                // 如果失敗且先前不是使用 minotar，則嘗試使用 Minotar (Name) 作為備用回退管道
+                if (img == null && !urlStr.contains("minotar.net")) {
+                    urlStr = "https://minotar.net/avatar/" + name + "/32.png";
+                    img = downloadImage(urlStr);
+                }
 
-                if (conn.getResponseCode() == 200) {
-                    try (InputStream in = conn.getInputStream()) {
-                        BufferedImage img = ImageIO.read(in);
-                        if (img != null) {
-                            // 縮放到 32x32 規格
-                            BufferedImage resized = new BufferedImage(32, 32, BufferedImage.TYPE_INT_ARGB);
-                            Graphics2D g = resized.createGraphics();
-                            g.drawImage(img, 0, 0, 32, 32, null);
-                            g.dispose();
+                if (img != null) {
+                    // 縮放到 32x32 規格
+                    BufferedImage resized = new BufferedImage(32, 32, BufferedImage.TYPE_INT_ARGB);
+                    Graphics2D g = resized.createGraphics();
+                    g.drawImage(img, 0, 0, 32, 32, null);
+                    g.dispose();
 
-                            avatarCache.put(uuid, resized);
+                    avatarCache.put(uuid, resized);
 
-                            // 下載完成，觸發立即的緩衝更新排程以在 Discord 重建圖片
-                            Bukkit.getScheduler().runTask(plugin, () -> {
-                                if (plugin.isEnabled()) {
-                                    plugin.startImmediateUpdateTask();
-                                }
-                            });
+                    // 下載完成，觸發立即的緩衝更新排程以在 Discord 重建圖片
+                    Bukkit.getScheduler().runTask(plugin, () -> {
+                        if (plugin.isEnabled()) {
+                            plugin.startImmediateUpdateTask();
                         }
-                    }
+                    });
                 }
             } catch (Exception e) {
                 plugin.getLogger().warning("下載玩家 " + name + " (" + uuid + ") 的頭像失敗: " + e.getMessage());
             }
         });
+    }
+
+    private BufferedImage downloadImage(String urlStr) {
+        try {
+            URL url = new URL(urlStr);
+            HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+            conn.setRequestMethod("GET");
+            conn.setConnectTimeout(5000);
+            conn.setReadTimeout(5000);
+            conn.setRequestProperty("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64)");
+
+            if (conn.getResponseCode() == 200) {
+                try (InputStream in = conn.getInputStream()) {
+                    return ImageIO.read(in);
+                }
+            }
+        } catch (Exception e) {
+            // 忽略錯誤，回傳 null 以進入備用管道
+        }
+        return null;
     }
 
     /**
