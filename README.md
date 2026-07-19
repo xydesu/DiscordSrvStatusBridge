@@ -75,6 +75,9 @@ maintenance-integration: true
 # 玩家頭像 API 網址。支援將 {uuid} 或 {name} 替換為玩家對應的 UUID 或名稱
 avatar-api-url: "https://minotar.net/helm/{uuid}/32.png"
 
+# 線上玩家清單 ({player_list}) 中，每一位玩家的顯示格式模板
+player-line-template: "- [{name}]({avatar_url})"
+
 # 狀態訊息內容與外觀設定
 embed-settings:
   # 當伺服器為不同狀態時的標題與顏色設定 (支援 Hex 色碼)

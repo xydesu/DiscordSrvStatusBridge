@@ -215,6 +215,8 @@ public class StatusUpdater {
             int total = onlinePlayers.size();
             List<? extends Player> playerListCopy = new ArrayList<>(onlinePlayers);
 
+            String lineTemplate = plugin.getConfig().getString("player-line-template", "- [{name}]({avatar_url})");
+
             // 處理 {player_list} (Markdown 帶頭像網址清單)
             StringBuilder sb = new StringBuilder();
             for (int i = 0; i < Math.min(limit, total); i++) {
@@ -224,7 +226,13 @@ public class StatusUpdater {
                 String url = avatarApiUrl
                         .replace("{uuid}", uuidStr)
                         .replace("{name}", nameStr);
-                sb.append("- [").append(nameStr).append("](").append(url).append(")\n");
+                
+                String playerLine = lineTemplate
+                        .replace("{name}", nameStr)
+                        .replace("{uuid}", uuidStr)
+                        .replace("{avatar_url}", url)
+                        .replace("{display_name}", player.getDisplayName());
+                sb.append(playerLine).append("\n");
             }
             if (total > limit) {
                 sb.append("- *...以及其他 ").append(total - limit).append(" 位玩家*");
