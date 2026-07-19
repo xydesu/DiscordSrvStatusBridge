@@ -202,7 +202,7 @@ public class StatusUpdater {
 
         // 5. 玩家清單與純文字清單 (供相容保留)
         Collection<? extends Player> onlinePlayers = Bukkit.getOnlinePlayers();
-        String avatarApiUrl = plugin.getConfig().getString("avatar-api-url", "https://crafatar.com/avatars/{uuid}?size=32&overlay");
+        String avatarApiUrl = plugin.getConfig().getString("avatar-api-url", "https://minotar.net/helm/{uuid}/32.png");
 
         String playerList;
         String playerNames;
@@ -399,7 +399,7 @@ public class StatusUpdater {
 
         Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
             try {
-                String avatarUrlTemplate = plugin.getConfig().getString("avatar-api-url", "https://crafatar.com/avatars/{uuid}?size=32&overlay");
+                String avatarUrlTemplate = plugin.getConfig().getString("avatar-api-url", "https://minotar.net/helm/{uuid}/32.png");
                 
                 String urlStr;
                 // 離線模式 UUID (version == 3) 回退至 Minotar 以名單獲取頭像

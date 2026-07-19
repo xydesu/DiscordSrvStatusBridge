@@ -73,7 +73,7 @@ update-interval-seconds: 30
 maintenance-integration: true
 
 # 玩家頭像 API 網址。支援將 {uuid} 或 {name} 替換為玩家對應的 UUID 或名稱
-avatar-api-url: "https://crafatar.com/avatars/{uuid}?size=32&overlay"
+avatar-api-url: "https://minotar.net/helm/{uuid}/32.png"
 
 # 狀態訊息內容與外觀設定
 embed-settings:

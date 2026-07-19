@@ -17,9 +17,10 @@ maintenance-integration: true
 
 # 玩家頭像 API 網址。支援將 {uuid} 或 {name} 替換為玩家對應的 UUID 或名稱
 # 常用 API：
-# - Minotar: https://minotar.net/avatar/{name}/32.png
-# - Crafatar: https://crafatar.com/avatars/{uuid}?size=32&overlay
-avatar-api-url: "https://crafatar.com/avatars/{uuid}?size=32&overlay"
+# - Minotar (帶頭盔): https://minotar.net/helm/{uuid}/32.png
+# - Minotar (無頭盔): https://minotar.net/avatar/{uuid}/32.png
+avatar-api-url: "https://minotar.net/helm/{uuid}/32.png"
+
 
 # 狀態訊息內容與外觀設定
 embed-settings:
