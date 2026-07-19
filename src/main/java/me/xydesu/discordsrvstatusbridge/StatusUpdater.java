@@ -402,8 +402,14 @@ public class StatusUpdater {
                 String avatarUrlTemplate = plugin.getConfig().getString("avatar-api-url", "https://minotar.net/helm/{uuid}/32.png");
                 
                 String urlStr;
-                // 離線模式 UUID (version == 3) 回退至 Minotar 以名單獲取頭像
-                if (uuid.version() == 3 && avatarUrlTemplate.contains("{uuid}")) {
+                boolean isBedrock = FloodgateHook.isBedrockPlayer(uuid);
+                String xuid = isBedrock ? FloodgateHook.getXuid(uuid) : null;
+
+                if (isBedrock && xuid != null) {
+                    // 基岩版玩家：直接抓取 Geyser 官方 Xbox 頭像 API
+                    urlStr = "https://api.geysermc.org/v2/avatar/" + xuid;
+                } else if (uuid.version() == 3 && avatarUrlTemplate.contains("{uuid}")) {
+                    // 離線模式 UUID (version == 3) 回退至 Minotar 以名稱獲取頭像
                     urlStr = "https://minotar.net/avatar/" + name + "/32.png";
                 } else {
                     urlStr = avatarUrlTemplate
@@ -415,7 +421,9 @@ public class StatusUpdater {
                 
                 // 如果失敗且先前不是使用 minotar，則嘗試使用 Minotar (Name) 作為備用回退管道
                 if (img == null && !urlStr.contains("minotar.net")) {
-                    urlStr = "https://minotar.net/avatar/" + name + "/32.png";
+                    // 對名稱進行清理，過濾掉基岩版前綴（例如 . 或 *）防止 API 404
+                    String cleanName = name.replaceAll("^[^a-zA-Z0-9_]+", "");
+                    urlStr = "https://minotar.net/avatar/" + cleanName + "/32.png";
                     img = downloadImage(urlStr);
                 }
 
