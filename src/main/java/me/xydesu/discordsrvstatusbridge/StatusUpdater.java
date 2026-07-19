@@ -639,16 +639,21 @@ public class StatusUpdater {
         }
     }
 
-    /**
-     * 關機時同步編輯（無附件）
-     */
     private void editEmbedSync(TextChannel channel, String messageId, MessageEmbed embed) {
         try {
             Object retrieveAction = channel.getClass().getMethod("retrieveMessageById", String.class).invoke(channel, messageId);
             Object msgObj = retrieveAction.getClass().getMethod("complete").invoke(retrieveAction);
             if (msgObj instanceof Message) {
-                performEditWithAttachment((Message) msgObj, null, embed, true, channel);
-                plugin.getLogger().info("已同步更新 Discord 狀態為「已關閉」");
+                Message message = (Message) msgObj;
+                try {
+                    // 同步刪除舊有附帶圖片的狀態訊息
+                    Object deleteAction = message.getClass().getMethod("delete").invoke(message);
+                    deleteAction.getClass().getMethod("complete").invoke(deleteAction);
+                } catch (Exception ignored) {
+                }
+                // 同步發送全新的不帶附件的關機狀態訊息，確保大圖徹底消失
+                sendEmbedWithAttachment(channel, null, embed, true);
+                plugin.getLogger().info("已同步重發 Discord 狀態為「已關閉」以清除頭像大圖");
             }
         } catch (Exception e) {
             plugin.getLogger().log(Level.WARNING, "同步編輯 Discord 關機訊息失敗: " + e.getMessage());
