@@ -1,0 +1,74 @@
+# ==============================================================================
+# DiscordSrvStatusBridge 設定檔
+# 作者: xydesu
+# ==============================================================================
+
+# 目標 Discord 頻道 ID
+channel-id: ""
+
+# 狀態訊息 ID（插件發送後會自動寫入此處，請勿手動修改）
+message-id: ""
+
+# 狀態更新頻率（單位：秒，建議不低於 10 秒以避免 Discord API 速率限制）
+update-interval-seconds: 30
+
+# 是否整合 Maintenance 插件 (讀取伺服器是否處於維護狀態)
+maintenance-integration: true
+
+# 玩家頭像 API 網址。支援將 {uuid} 或 {name} 替換為玩家對應的 UUID 或名稱
+# 常用 API：
+# - Minotar: https://minotar.net/avatar/{name}/32.png
+# - Crafatar: https://crafatar.com/avatars/{uuid}?size=32&overlay
+avatar-api-url: "https://crafatar.com/avatars/{uuid}?size=32&overlay"
+
+# 狀態訊息內容與外觀設定
+embed-settings:
+  # 當伺服器為不同狀態時的標題與顏色設定 (支援 Hex 色碼)
+  status-online:
+    title: "🟢 伺服器運作中"
+    color: "#2ECC71" # 綠色
+  status-maintenance:
+    title: "🟡 伺服器維護中"
+    color: "#F1C40F" # 黃色
+  status-offline:
+    title: "🔴 伺服器已關閉"
+    color: "#E74C3C" # 紅色
+
+  # 維護狀態文字對應
+  maintenance-true-text: "🛠️ 維護中"
+  maintenance-false-text: "✅ 正常開放"
+
+  # 當沒有玩家在線上時的替代文字
+  no-players-text: "*目前沒有玩家在線上*"
+
+  # 狀態訊息的描述 (Description) 內容，支援 Placeholder 替換。
+  # 說明：伺服器 IP 等靜態內容請直接在模板中填寫即可。
+  #
+  # 支援的動態 Placeholders：
+  # {online}             - 線上玩家人數
+  # {max}                - 伺服器最大人數
+  # {tps}                - 當前 1 分鐘平均 TPS (格式化為 ##.##)
+  # {tps_1m}             - 1 分鐘平均 TPS
+  # {tps_5m}             - 5 分鐘平均 TPS
+  # {tps_15m}            - 15 分鐘平均 TPS
+  # {ram_used}           - 已使用記憶體 (MB)
+  # {ram_max}            - 最大分配記憶體 (MB)
+  # {ram_free}           - 剩餘可用記憶體 (MB)
+  # {maintenance_status} - 維護狀態字串 (🛠️ 維護中 / ✅ 正常開放)
+  # {player_list}        - 玩家頭像超連結列表 (Markdown 格式，例如: [Name](AvatarURL))
+  # {player_names}       - 線上玩家純文字清單 (以逗號分隔，例如: xydesu, Player1)
+  # {server_version}     - 伺服器核心版本
+  # {last_updated}       - 上次更新時間 (格式: yyyy-MM-dd HH:mm:ss)
+  description-template: |
+    **伺服器位址**: `play.yourserver.com`
+    **伺服器版本**: `{server_version}`
+    **系統狀態**: {maintenance_status}
+    
+    **線上人數**: `{online} / {max}`
+    **系統效能**: `{tps} TPS` *(1m: {tps_1m} | 5m: {tps_5m} | 15m: {tps_15m})*
+    **記憶體使用**: `{ram_used} MB / {ram_max} MB` *(剩餘 {ram_free} MB)*
+    
+    **線上玩家**:
+    {player_list}
+    
+    *最後更新時間: {last_updated}*

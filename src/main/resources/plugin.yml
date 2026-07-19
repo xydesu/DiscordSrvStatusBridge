@@ -1,0 +1,7 @@
+name: DiscordSrvStatusBridge
+version: '${project.version}'
+main: me.xydesu.discordsrvstatusbridge.DiscordSrvStatusBridge
+api-version: '1.21'
+author: xydesu
+description: DiscordSrv Addon that displays server status (player count, tps, maintenance, etc.) in a dedicated channel.
+softdepend: [DiscordSRV, Maintenance]
