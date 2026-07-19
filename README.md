@@ -1,5 +1,7 @@
 # DiscordSrvStatusBridge
 
+[繁體中文](https://github.com/xydesu/DiscordSrvStatusBridge/blob/main/README_zh_tw.md)
+
 A DiscordSrv add-on for displaying the operational status of a Minecraft server in a Discord channel.
 
 ## Download
