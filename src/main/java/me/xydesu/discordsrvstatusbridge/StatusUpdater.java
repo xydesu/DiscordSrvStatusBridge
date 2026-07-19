@@ -38,15 +38,7 @@ public class StatusUpdater {
     private boolean isUpdating = false;
 
     // 偵測 JDA 版本 (JDA 5 引入了 MessageCreateBuilder)
-    private static boolean isJda5 = false;
-    static {
-        try {
-            Class.forName("github.scarsz.discordsrv.dependencies.jda.api.utils.messages.MessageCreateBuilder");
-            isJda5 = true;
-        } catch (ClassNotFoundException e) {
-            isJda5 = false;
-        }
-    }
+    private boolean isJda5 = false;
 
     // 頭像快取
     private final Map<UUID, BufferedImage> avatarCache = new ConcurrentHashMap<>();
@@ -55,6 +47,23 @@ public class StatusUpdater {
     public StatusUpdater(DiscordSrvStatusBridge plugin, MaintenanceHook maintenanceHook) {
         this.plugin = plugin;
         this.maintenanceHook = maintenanceHook;
+
+        // 在實例化時動態偵測 JDA 版本，確保 DiscordUtil 的 ClassLoader 已就緒
+        try {
+            getJdaClass("github.scarsz.discordsrv.dependencies.jda.api.utils.messages.MessageCreateBuilder");
+            this.isJda5 = true;
+            plugin.getLogger().info("已偵測並啟用 JDA 5 狀態更新引擎。");
+        } catch (Throwable e) {
+            this.isJda5 = false;
+            plugin.getLogger().info("已偵測並啟用 JDA 4 狀態更新引擎。");
+        }
+    }
+
+    /**
+     * 透過 DiscordUtil 的 ClassLoader 安全加載類別，防止 Bukkit 與 JDA 之間的 ClassLoader 隔離問題
+     */
+    private Class<?> getJdaClass(String className) throws ClassNotFoundException {
+        return Class.forName(className, true, DiscordUtil.class.getClassLoader());
     }
 
     /**
@@ -496,7 +505,7 @@ public class StatusUpdater {
      */
     private Object createFileUpload(byte[] bytes, String name) {
         try {
-            Class<?> clazz = Class.forName("github.scarsz.discordsrv.dependencies.jda.api.utils.FileUpload");
+            Class<?> clazz = getJdaClass("github.scarsz.discordsrv.dependencies.jda.api.utils.FileUpload");
             Method method = clazz.getMethod("fromData", byte[].class, String.class);
             return method.invoke(null, bytes, name);
         } catch (Exception e) {
@@ -512,7 +521,7 @@ public class StatusUpdater {
             Object action;
             if (isJda5) {
                 // JDA 5 核心發送機制：使用 MessageCreateBuilder 搭配 MessageCreateData
-                Object builder = Class.forName("github.scarsz.discordsrv.dependencies.jda.api.utils.messages.MessageCreateBuilder").getConstructor().newInstance();
+                Object builder = getJdaClass("github.scarsz.discordsrv.dependencies.jda.api.utils.messages.MessageCreateBuilder").getConstructor().newInstance();
                 
                 // setEmbeds(MessageEmbed...)
                 Method setEmbedsMethod = builder.getClass().getMethod("setEmbeds", MessageEmbed[].class);
@@ -533,7 +542,7 @@ public class StatusUpdater {
                 Object createData = builder.getClass().getMethod("build").invoke(builder);
                 
                 // sendMessage(MessageCreateData)
-                Class<?> createDataClass = Class.forName("github.scarsz.discordsrv.dependencies.jda.api.utils.messages.MessageCreateData");
+                Class<?> createDataClass = getJdaClass("github.scarsz.discordsrv.dependencies.jda.api.utils.messages.MessageCreateData");
                 Method sendMessageMethod = channel.getClass().getMethod("sendMessage", createDataClass);
                 action = sendMessageMethod.invoke(channel, createData);
             } else {
@@ -608,7 +617,7 @@ public class StatusUpdater {
         try {
             if (isJda5) {
                 // JDA 5 核心編輯機制：使用 MessageEditBuilder 與 MessageEditData
-                Object builder = Class.forName("github.scarsz.discordsrv.dependencies.jda.api.utils.messages.MessageEditBuilder").getConstructor().newInstance();
+                Object builder = getJdaClass("github.scarsz.discordsrv.dependencies.jda.api.utils.messages.MessageEditBuilder").getConstructor().newInstance();
                 
                 // setEmbeds(MessageEmbed...)
                 Method setEmbedsMethod = builder.getClass().getMethod("setEmbeds", MessageEmbed[].class);
@@ -629,7 +638,7 @@ public class StatusUpdater {
                 Object editData = builder.getClass().getMethod("build").invoke(builder);
                 
                 // editMessage(MessageEditData)
-                Class<?> editDataClass = Class.forName("github.scarsz.discordsrv.dependencies.jda.api.utils.messages.MessageEditData");
+                Class<?> editDataClass = getJdaClass("github.scarsz.discordsrv.dependencies.jda.api.utils.messages.MessageEditData");
                 Method editMessageMethod = message.getClass().getMethod("editMessage", editDataClass);
                 Object action = editMessageMethod.invoke(message, editData);
                 
@@ -644,7 +653,7 @@ public class StatusUpdater {
                     // JDA 4 不支援編輯時更換/上傳附件，手動拋出以進入 JDA 4 回退刪除重建機制
                     throw new NoSuchMethodException("JDA 4 不支援編輯附件");
                 } else {
-                    // 無附件的編輯，直接更新 Embed 即可
+                    // 無附件的編輯，直接更新 Embed 內容即可
                     Object editAction = message.getClass().getMethod("editMessage", MessageEmbed.class).invoke(message, embed);
                     if (sync) {
                         editAction.getClass().getMethod("complete").invoke(editAction);
