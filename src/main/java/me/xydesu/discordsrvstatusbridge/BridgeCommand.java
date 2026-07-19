@@ -40,10 +40,16 @@ public class BridgeCommand implements CommandExecutor, TabCompleter {
             plugin.reloadConfig();
             sender.sendMessage("§a[DiscordSrvStatusBridge] 設定檔已成功重新載入！");
             
-            // 重新讀取後，重新啟動定時任務（以防更新頻率變動），並強制立即非同步更新一次
-            plugin.startUpdateTask();
+            // 重新讀取後，強制立即非同步更新一次，並重設計時器
             if (plugin.getStatusUpdater() != null) {
                 plugin.getStatusUpdater().updateStatus(false, false);
+                long intervalTicks = plugin.getConfig().getLong("update-interval-seconds", 30L) * 20L;
+                if (intervalTicks < 200L) {
+                    intervalTicks = 600L;
+                }
+                plugin.startUpdateTask(intervalTicks);
+            } else {
+                plugin.startUpdateTask();
             }
             sender.sendMessage("§a[DiscordSrvStatusBridge] 已重新套用更新任務排程並觸發更新。");
             return true;
