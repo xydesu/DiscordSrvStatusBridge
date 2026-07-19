@@ -32,13 +32,13 @@ player-line-template: "- [{name}]({avatar_url})"
 
 # 玩家名單排序設定
 # 根據權限節點 (例如 LuckPerms 的 group.admin) 賦予權重。
-# 權重數字越大的玩家將會排在名單的越前面。若無匹配權限則權重為 0，權重相同者將按名稱排序。
+# 格式為 "權限節點:權重"。權重數字越大的玩家將會排在名單的越前面。若無匹配權限則權重為 0。
 player-sorting:
   enabled: true
   weights:
-    "group.admin": 100
-    "group.mod": 50
-    "group.vip": 10
+    - "group.admin:100"
+    - "group.mod:50"
+    - "group.vip:10"
 
 # 狀態訊息內容與外觀設定
 embed-settings:

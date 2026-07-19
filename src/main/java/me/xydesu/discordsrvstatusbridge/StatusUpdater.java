@@ -741,16 +741,20 @@ public class StatusUpdater {
             return 0;
         }
 
-        org.bukkit.configuration.ConfigurationSection weights = plugin.getConfig().getConfigurationSection("player-sorting.weights");
-        if (weights == null) return 0;
+        java.util.List<String> weights = plugin.getConfig().getStringList("player-sorting.weights");
+        if (weights == null || weights.isEmpty()) return 0;
 
         int maxWeight = 0;
-        for (String perm : weights.getKeys(true)) {
-            if (weights.isInt(perm) && player.hasPermission(perm)) {
-                int w = weights.getInt(perm, 0);
-                if (w > maxWeight) {
-                    maxWeight = w;
-                }
+        for (String entry : weights) {
+            String[] parts = entry.split(":");
+            if (parts.length == 2) {
+                String perm = parts[0].trim();
+                try {
+                    int w = Integer.parseInt(parts[1].trim());
+                    if (player.hasPermission(perm) && w > maxWeight) {
+                        maxWeight = w;
+                    }
+                } catch (NumberFormatException ignored) {}
             }
         }
         return maxWeight;

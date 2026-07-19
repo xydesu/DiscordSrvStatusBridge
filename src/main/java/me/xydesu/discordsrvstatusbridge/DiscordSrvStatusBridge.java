@@ -213,9 +213,24 @@ public class DiscordSrvStatusBridge extends JavaPlugin implements Listener {
         // v1.0.0 新增: 玩家名單權重排序
         if (!config.contains("player-sorting")) {
             config.set("player-sorting.enabled", true);
-            config.set("player-sorting.weights.group.admin", 100);
-            config.set("player-sorting.weights.group.mod", 50);
-            config.set("player-sorting.weights.group.vip", 10);
+            config.set("player-sorting.weights", java.util.Arrays.asList(
+                    "group.admin:100",
+                    "group.mod:50",
+                    "group.vip:10"
+            ));
+            changed = true;
+        } else if (config.isConfigurationSection("player-sorting.weights")) {
+            // 自動將舊的樹狀 ConfigurationSection 轉換為字串 List，避免 Bukkit yaml 展開點號
+            org.bukkit.configuration.ConfigurationSection weights = config.getConfigurationSection("player-sorting.weights");
+            java.util.List<String> list = new java.util.ArrayList<>();
+            if (weights != null) {
+                for (String key : weights.getKeys(true)) {
+                    if (weights.isInt(key)) {
+                        list.add(key + ":" + weights.getInt(key));
+                    }
+                }
+            }
+            config.set("player-sorting.weights", list);
             changed = true;
         }
 
