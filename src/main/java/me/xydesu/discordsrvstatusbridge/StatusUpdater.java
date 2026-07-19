@@ -745,8 +745,8 @@ public class StatusUpdater {
         if (weights == null) return 0;
 
         int maxWeight = 0;
-        for (String perm : weights.getKeys(false)) {
-            if (player.hasPermission(perm)) {
+        for (String perm : weights.getKeys(true)) {
+            if (weights.isInt(perm) && player.hasPermission(perm)) {
                 int w = weights.getInt(perm, 0);
                 if (w > maxWeight) {
                     maxWeight = w;
