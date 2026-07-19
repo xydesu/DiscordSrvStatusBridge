@@ -45,9 +45,16 @@ public class StatusUpdater {
         isUpdating = true;
 
         try {
-            String channelId = plugin.getConfig().getString("channel-id", "").trim();
-            if (channelId.isEmpty()) {
+            String channelIdInput = plugin.getConfig().getString("channel-id", "").trim();
+            if (channelIdInput.isEmpty()) {
                 plugin.getLogger().warning("未設定 Discord channel-id，無法更新伺服器狀態。");
+                isUpdating = false;
+                return;
+            }
+
+            String channelId = parseChannelId(channelIdInput);
+            if (!channelId.matches("^\\d+$")) {
+                plugin.getLogger().warning("設定的頻道 ID \"" + channelIdInput + "\" 不是有效的 Snowflake 格式（應為純數字或頻道連結）。");
                 isUpdating = false;
                 return;
             }
@@ -340,5 +347,32 @@ public class StatusUpdater {
         } catch (Exception e) {
             plugin.getLogger().log(Level.SEVERE, "執行 Discord 訊息編輯反射調用失敗: " + e.getMessage(), e);
         }
+    }
+
+    /**
+     * 從設定的字串中解析出正確的 Discord 頻道 Snowflake ID
+     * 支援解析完整的 Discord 頻道 URL，如 https://discord.com/channels/guild/channel
+     */
+    private String parseChannelId(String input) {
+        if (input == null) {
+            return "";
+        }
+        input = input.trim();
+        if (input.isEmpty()) {
+            return "";
+        }
+
+        // 若輸入為完整網址，取得最後一節
+        if (input.contains("/")) {
+            String[] parts = input.split("/");
+            input = parts[parts.length - 1].trim();
+        }
+
+        // 移除網址後方的參數
+        if (input.contains("?")) {
+            input = input.split("\\?")[0].trim();
+        }
+
+        return input;
     }
 }
