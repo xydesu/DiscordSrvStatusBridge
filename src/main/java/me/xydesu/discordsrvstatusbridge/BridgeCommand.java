@@ -51,7 +51,14 @@ public class BridgeCommand implements CommandExecutor, TabCompleter {
             sender.sendMessage("§a[DiscordSrvStatusBridge] 開始強制更新狀態...");
             if (plugin.getStatusUpdater() != null) {
                 plugin.getStatusUpdater().updateStatus(false, false);
-                plugin.startUpdateTask(); // 強制更新後重置定時器
+                
+                // 強制更新後，計算完整週期延遲來重設/重啟定時器
+                long intervalTicks = plugin.getConfig().getLong("update-interval-seconds", 30L) * 20L;
+                if (intervalTicks < 200L) {
+                    intervalTicks = 600L;
+                }
+                plugin.startUpdateTask(intervalTicks);
+                
                 sender.sendMessage("§a[DiscordSrvStatusBridge] 已強制觸發狀態更新並重置定時器。");
             } else {
                 sender.sendMessage("§c[DiscordSrvStatusBridge] 狀態更新器未就緒！");

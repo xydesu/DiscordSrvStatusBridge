@@ -97,9 +97,18 @@ public class DiscordSrvStatusBridge extends JavaPlugin implements Listener {
     }
 
     /**
-     * 啟動異步定時更新狀態任務
+     * 啟動異步定時更新狀態任務，預設延遲 2 秒後首次執行
      */
     public void startUpdateTask() {
+        startUpdateTask(40L); // 預設延遲 2 秒以盡快初始化狀態
+    }
+
+    /**
+     * 啟動異步定時更新狀態任務，並指定首次執行的延遲 tick 數
+     *
+     * @param firstDelayTicks 首次執行的延遲
+     */
+    public void startUpdateTask(long firstDelayTicks) {
         stopUpdateTask();
 
         long intervalTicks = getConfig().getLong("update-interval-seconds", 30L) * 20L;
@@ -112,9 +121,12 @@ public class DiscordSrvStatusBridge extends JavaPlugin implements Listener {
             if (statusUpdater != null) {
                 statusUpdater.updateStatus(false, false);
             }
-        }, 40L, intervalTicks); // 延遲 2 秒後首次執行
+        }, firstDelayTicks, intervalTicks);
 
-        getLogger().info("已啟動伺服器狀態監控任務（更新頻率：" + (intervalTicks / 20) + " 秒）。");
+        // 僅在預設 2 秒延遲啟動時印出日誌，防止計時器重置時洗版日誌
+        if (firstDelayTicks == 40L) {
+            getLogger().info("已啟動伺服器狀態監控任務（更新頻率：" + (intervalTicks / 20) + " 秒）。");
+        }
     }
 
     /**
@@ -159,8 +171,15 @@ public class DiscordSrvStatusBridge extends JavaPlugin implements Listener {
         }
         immediateUpdateTask = Bukkit.getScheduler().runTaskLaterAsynchronously(this, () -> {
             statusUpdater.updateStatus(false, false);
-            // 執行完即時更新後，於主執行緒重設/重啟定時任務，實現 Timer 重置
-            Bukkit.getScheduler().runTask(this, this::startUpdateTask);
+            
+            // 執行完即時更新後，計算一個完整的更新週期延遲，並重設/重啟定時監控任務，以防重複更新
+            long intervalTicks = getConfig().getLong("update-interval-seconds", 30L) * 20L;
+            if (intervalTicks < 200L) {
+                intervalTicks = 600L;
+            }
+            final long delay = intervalTicks;
+            Bukkit.getScheduler().runTask(this, () -> startUpdateTask(delay));
+            
             immediateUpdateTask = null;
         }, 20L); // 延遲 1 秒合併更新
     }
