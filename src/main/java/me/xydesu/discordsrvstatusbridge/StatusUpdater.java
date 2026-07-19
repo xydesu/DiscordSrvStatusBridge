@@ -39,6 +39,7 @@ public class StatusUpdater {
 
     // 頭像快取
     private final Map<UUID, BufferedImage> avatarCache = new ConcurrentHashMap<>();
+    private final Set<UUID> downloadingAvatars = ConcurrentHashMap.newKeySet();
     private BufferedImage defaultAvatar = null;
 
     public StatusUpdater(DiscordSrvStatusBridge plugin, MaintenanceHook maintenanceHook) {
@@ -98,6 +99,20 @@ public class StatusUpdater {
             if (firstUpdate && !offlineMode) {
                 firstUpdate = false;
                 detectAndCleanDuplicateMessages(channel);
+            }
+
+            // 檢查是否有線上玩家的頭像正在非同步下載中，如果是，則暫緩此次更新，等候下載完成後由 callback 自動驅動刷新
+            boolean isAnyAvatarDownloading = false;
+            for (Player p : getVisiblePlayers()) {
+                if (!avatarCache.containsKey(p.getUniqueId()) && downloadingAvatars.contains(p.getUniqueId())) {
+                    isAnyAvatarDownloading = true;
+                    break;
+                }
+            }
+            if (isAnyAvatarDownloading && !offlineMode) {
+                plugin.getLogger().fine("有線上玩家頭像下載中，暫緩 Discord 狀態更新，等候下載完成後自動刷新...");
+                isUpdating = false;
+                return;
             }
 
             // 生成拼接頭像圖片 (若離線或無玩家則為 null)
@@ -430,12 +445,9 @@ public class StatusUpdater {
      * 非同步下載玩家頭像並放入快取中。
      */
     public void fetchAvatarAsync(UUID uuid, String name) {
-        if (avatarCache.containsKey(uuid)) {
+        if (avatarCache.containsKey(uuid) || !downloadingAvatars.add(uuid)) {
             return;
         }
-
-        // 下載前先提供預設頭像佔位，防止重複提交任務
-        avatarCache.put(uuid, getDefaultAvatar());
 
         Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
             try {
@@ -485,6 +497,8 @@ public class StatusUpdater {
                 }
             } catch (Exception e) {
                 plugin.getLogger().warning("下載玩家 " + name + " (" + uuid + ") 的頭像失敗: " + e.getMessage());
+            } finally {
+                downloadingAvatars.remove(uuid);
             }
         });
     }
