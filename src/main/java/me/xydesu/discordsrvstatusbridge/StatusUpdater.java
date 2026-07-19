@@ -37,6 +37,17 @@ public class StatusUpdater {
     private final MaintenanceHook maintenanceHook;
     private boolean isUpdating = false;
 
+    // 偵測 JDA 版本 (JDA 5 引入了 MessageCreateBuilder)
+    private static boolean isJda5 = false;
+    static {
+        try {
+            Class.forName("github.scarsz.discordsrv.dependencies.jda.api.utils.messages.MessageCreateBuilder");
+            isJda5 = true;
+        } catch (ClassNotFoundException e) {
+            isJda5 = false;
+        }
+    }
+
     // 頭像快取
     private final Map<UUID, BufferedImage> avatarCache = new ConcurrentHashMap<>();
     private BufferedImage defaultAvatar = null;
@@ -499,24 +510,38 @@ public class StatusUpdater {
     private void sendEmbedWithAttachment(TextChannel channel, byte[] bytes, MessageEmbed embed, boolean sync) {
         try {
             Object action;
-            if (bytes != null) {
-                Object fileUpload = createFileUpload(bytes, "players.png");
-                if (fileUpload != null) {
-                    // JDA 5
-                    Object[] fileArray = (Object[]) java.lang.reflect.Array.newInstance(fileUpload.getClass(), 1);
-                    fileArray[0] = fileUpload;
-                    Object act = channel.getClass().getMethod("sendFiles", fileArray.getClass()).invoke(channel, (Object) fileArray);
-                    action = act.getClass().getMethod("setEmbeds", MessageEmbed[].class).invoke(act, (Object) new MessageEmbed[]{embed});
-                } else {
-                    // JDA 4
+            if (isJda5) {
+                // JDA 5 核心發送機制：使用 MessageCreateBuilder 搭配 MessageCreateData
+                Object builder = Class.forName("github.scarsz.discordsrv.dependencies.jda.api.utils.messages.MessageCreateBuilder").getConstructor().newInstance();
+                
+                // setEmbeds(MessageEmbed...)
+                Method setEmbedsMethod = builder.getClass().getMethod("setEmbeds", MessageEmbed[].class);
+                builder = setEmbedsMethod.invoke(builder, (Object) new MessageEmbed[]{embed});
+                
+                // setFiles(FileUpload...)
+                if (bytes != null) {
+                    Object fileUpload = createFileUpload(bytes, "players.png");
+                    if (fileUpload != null) {
+                        Object[] fileArray = (Object[]) java.lang.reflect.Array.newInstance(fileUpload.getClass(), 1);
+                        fileArray[0] = fileUpload;
+                        Method setFilesMethod = builder.getClass().getMethod("setFiles", fileArray.getClass());
+                        builder = setFilesMethod.invoke(builder, (Object) fileArray);
+                    }
+                }
+                
+                // build()
+                Object createData = builder.getClass().getMethod("build").invoke(builder);
+                
+                // sendMessage(MessageCreateData)
+                Class<?> createDataClass = Class.forName("github.scarsz.discordsrv.dependencies.jda.api.utils.messages.MessageCreateData");
+                Method sendMessageMethod = channel.getClass().getMethod("sendMessage", createDataClass);
+                action = sendMessageMethod.invoke(channel, createData);
+            } else {
+                // JDA 4 核心發送機制
+                if (bytes != null) {
                     Object act = channel.getClass().getMethod("sendFile", byte[].class, String.class).invoke(channel, bytes, "players.png");
                     action = act.getClass().getMethod("embed", MessageEmbed.class).invoke(act, embed);
-                }
-            } else {
-                // 無附件
-                try {
-                    action = channel.getClass().getMethod("sendMessageEmbeds", MessageEmbed[].class).invoke(channel, (Object) new MessageEmbed[]{embed});
-                } catch (NoSuchMethodException e) {
+                } else {
                     action = channel.getClass().getMethod("sendMessage", MessageEmbed.class).invoke(channel, embed);
                 }
             }
@@ -581,39 +606,51 @@ public class StatusUpdater {
      */
     private void performEditWithAttachment(Message message, byte[] bytes, MessageEmbed embed, boolean sync, TextChannel channel) {
         try {
-            if (bytes != null) {
-                Object fileUpload = createFileUpload(bytes, "players.png");
-                if (fileUpload != null) {
-                    // JDA 5 編輯並上傳新附件
-                    Object editAction = message.getClass().getMethod("editMessageEmbeds", MessageEmbed[].class).invoke(message, (Object) new MessageEmbed[]{embed});
-                    
-                    Object[] fileArray = (Object[]) java.lang.reflect.Array.newInstance(fileUpload.getClass(), 1);
-                    fileArray[0] = fileUpload;
-                    editAction = editAction.getClass().getMethod("setFiles", fileArray.getClass()).invoke(editAction, (Object) fileArray);
-                    
+            if (isJda5) {
+                // JDA 5 核心編輯機制：使用 MessageEditBuilder 與 MessageEditData
+                Object builder = Class.forName("github.scarsz.discordsrv.dependencies.jda.api.utils.messages.MessageEditBuilder").getConstructor().newInstance();
+                
+                // setEmbeds(MessageEmbed...)
+                Method setEmbedsMethod = builder.getClass().getMethod("setEmbeds", MessageEmbed[].class);
+                builder = setEmbedsMethod.invoke(builder, (Object) new MessageEmbed[]{embed});
+                
+                // setFiles(FileUpload...)
+                if (bytes != null) {
+                    Object fileUpload = createFileUpload(bytes, "players.png");
+                    if (fileUpload != null) {
+                        Object[] fileArray = (Object[]) java.lang.reflect.Array.newInstance(fileUpload.getClass(), 1);
+                        fileArray[0] = fileUpload;
+                        Method setFilesMethod = builder.getClass().getMethod("setFiles", fileArray.getClass());
+                        builder = setFilesMethod.invoke(builder, (Object) fileArray);
+                    }
+                }
+                
+                // build()
+                Object editData = builder.getClass().getMethod("build").invoke(builder);
+                
+                // editMessage(MessageEditData)
+                Class<?> editDataClass = Class.forName("github.scarsz.discordsrv.dependencies.jda.api.utils.messages.MessageEditData");
+                Method editMessageMethod = message.getClass().getMethod("editMessage", editDataClass);
+                Object action = editMessageMethod.invoke(message, editData);
+                
+                if (sync) {
+                    action.getClass().getMethod("complete").invoke(action);
+                } else {
+                    action.getClass().getMethod("queue").invoke(action);
+                }
+            } else {
+                // JDA 4 核心編輯機制
+                if (bytes != null) {
+                    // JDA 4 不支援編輯時更換/上傳附件，手動拋出以進入 JDA 4 回退刪除重建機制
+                    throw new NoSuchMethodException("JDA 4 不支援編輯附件");
+                } else {
+                    // 無附件的編輯，直接更新 Embed 即可
+                    Object editAction = message.getClass().getMethod("editMessage", MessageEmbed.class).invoke(message, embed);
                     if (sync) {
                         editAction.getClass().getMethod("complete").invoke(editAction);
                     } else {
                         editAction.getClass().getMethod("queue").invoke(editAction);
                     }
-                    return;
-                }
-                
-                // JDA 4 不支援編輯附件，拋出 NoSuchMethodException 以進入回退方案
-                throw new NoSuchMethodException("JDA 4 不支援編輯附件");
-            } else {
-                // 無附件的編輯，直接更新 Embed 內容即可
-                Object editAction;
-                try {
-                    editAction = message.getClass().getMethod("editMessageEmbeds", MessageEmbed[].class).invoke(message, (Object) new MessageEmbed[]{embed});
-                } catch (NoSuchMethodException e) {
-                    editAction = message.getClass().getMethod("editMessage", MessageEmbed.class).invoke(message, embed);
-                }
-
-                if (sync) {
-                    editAction.getClass().getMethod("complete").invoke(editAction);
-                } else {
-                    editAction.getClass().getMethod("queue").invoke(editAction);
                 }
             }
         } catch (NoSuchMethodException e) {
